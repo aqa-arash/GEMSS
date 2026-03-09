@@ -193,6 +193,7 @@ venv/
 .venv/
 conda-env/
 multisphere_test/
+uv.lock
 
 # ----------------------------------------------------
 # IDE & editor files

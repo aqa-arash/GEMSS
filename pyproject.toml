@@ -19,6 +19,8 @@ dependencies = [
   "scipy",
   "scikit-image",
   "trimesh",
+  "pandas>=2.3.3",
+  "pyvista>=0.46.5",
 ]
 
 classifiers = [
