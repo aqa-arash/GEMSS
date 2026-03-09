@@ -208,7 +208,7 @@ MultisphereLib_BINARY_DIR:STATIC=/nishome/arash/Documents/multisphere-cpp/exampl
 MultisphereLib_IS_TOP_LEVEL:STATIC=ON
 
 //Value Computed by CMake
-MultisphereLib_SOURCE_DIR:STATIC=/nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp
+MultisphereLib_SOURCE_DIR:STATIC=/nishome/arash/Documents/multisphere-cpp/src
 
 //CXX compiler flags for OpenMP parallelization
 OpenMP_CXX_FLAGS:STRING=-fopenmp
@@ -222,14 +222,8 @@ OpenMP_gomp_LIBRARY:FILEPATH=/usr/lib/gcc/x86_64-linux-gnu/11/libgomp.so
 //Path to the pthread library for OpenMP
 OpenMP_pthread_LIBRARY:FILEPATH=/usr/lib/x86_64-linux-gnu/libpthread.a
 
-//Use Manifold for boolean operations
-USE_MANIFOLD:BOOL=OFF
-
 //Use OpenMP for parallelization
 USE_OPENMP:BOOL=ON
-
-//Enable VTK for visualization
-USE_VTK:BOOL=OFF
 
 //Path to a file.
 ZLIB_INCLUDE_DIR:PATH=/usr/include
@@ -311,7 +305,7 @@ CMAKE_GENERATOR_PLATFORM:INTERNAL=
 CMAKE_GENERATOR_TOOLSET:INTERNAL=
 //Source directory with the top level CMakeLists.txt file for this
 // project
-CMAKE_HOME_DIRECTORY:INTERNAL=/nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp
+CMAKE_HOME_DIRECTORY:INTERNAL=/nishome/arash/Documents/multisphere-cpp/src
 //Install .so files without execute permission.
 CMAKE_INSTALL_SO_NO_EXE:INTERNAL=1
 //ADVANCED property for variable: CMAKE_LINKER

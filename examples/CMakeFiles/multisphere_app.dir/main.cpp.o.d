@@ -1,5 +1,5 @@
 CMakeFiles/multisphere_app.dir/main.cpp.o: \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/main.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/main.cpp \
  /usr/include/stdc-predef.h /usr/include/c++/11/iostream \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h \
@@ -150,12 +150,12 @@ CMakeFiles/multisphere_app.dir/main.cpp.o: \
  /usr/include/c++/11/bits/locale_facets.tcc \
  /usr/include/c++/11/bits/basic_ios.tcc \
  /usr/include/c++/11/bits/ostream.tcc /usr/include/c++/11/istream \
- /usr/include/c++/11/bits/istream.tcc /usr/include/eigen3/Eigen/Dense \
- /usr/include/eigen3/Eigen/Core \
- /usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h \
- /usr/include/eigen3/Eigen/src/Core/util/Macros.h \
- /usr/include/c++/11/cmath /usr/include/math.h \
- /usr/include/x86_64-linux-gnu/bits/math-vector.h \
+ /usr/include/c++/11/bits/istream.tcc /usr/include/c++/11/vector \
+ /usr/include/c++/11/bits/stl_uninitialized.h \
+ /usr/include/c++/11/bits/stl_vector.h \
+ /usr/include/c++/11/bits/stl_bvector.h \
+ /usr/include/c++/11/bits/vector.tcc /usr/include/c++/11/cmath \
+ /usr/include/math.h /usr/include/x86_64-linux-gnu/bits/math-vector.h \
  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
  /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
  /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
@@ -176,7 +176,10 @@ CMakeFiles/multisphere_app.dir/main.cpp.o: \
  /usr/include/c++/11/tr1/modified_bessel_func.tcc \
  /usr/include/c++/11/tr1/poly_hermite.tcc \
  /usr/include/c++/11/tr1/poly_laguerre.tcc \
- /usr/include/c++/11/tr1/riemann_zeta.tcc \
+ /usr/include/c++/11/tr1/riemann_zeta.tcc /usr/include/eigen3/Eigen/Dense \
+ /usr/include/eigen3/Eigen/Core \
+ /usr/include/eigen3/Eigen/src/Core/util/DisableStupidWarnings.h \
+ /usr/include/eigen3/Eigen/src/Core/util/Macros.h \
  /usr/include/eigen3/Eigen/src/Core/util/ConfigureVectorization.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/mmintrin.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/emmintrin.h \
@@ -282,11 +285,7 @@ CMakeFiles/multisphere_app.dir/main.cpp.o: \
  /usr/include/c++/11/bits/enable_special_members.h \
  /usr/include/c++/11/bits/node_handle.h \
  /usr/include/c++/11/bits/unordered_map.h \
- /usr/include/c++/11/bits/erase_if.h /usr/include/c++/11/vector \
- /usr/include/c++/11/bits/stl_uninitialized.h \
- /usr/include/c++/11/bits/stl_vector.h \
- /usr/include/c++/11/bits/stl_bvector.h \
- /usr/include/c++/11/bits/vector.tcc /usr/include/c++/11/bits/stl_algo.h \
+ /usr/include/c++/11/bits/erase_if.h /usr/include/c++/11/bits/stl_algo.h \
  /usr/include/c++/11/bits/algorithmfwd.h \
  /usr/include/c++/11/bits/stl_heap.h \
  /usr/include/c++/11/bits/stl_tempbuf.h \
@@ -493,7 +492,7 @@ CMakeFiles/multisphere_app.dir/main.cpp.o: \
  /usr/include/eigen3/Eigen/src/Eigenvalues/GeneralizedEigenSolver.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/RealQZ.h \
  /usr/include/eigen3/Eigen/src/Eigenvalues/MatrixBaseEigenvalues.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/multisphere_datatypes.hpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/multisphere_datatypes.hpp \
  /usr/include/c++/11/thread /usr/include/c++/11/bits/std_thread.h \
  /usr/include/c++/11/bits/unique_ptr.h \
  /usr/include/c++/11/bits/this_thread_sleep.h /usr/include/c++/11/chrono \
@@ -508,8 +507,8 @@ CMakeFiles/multisphere_app.dir/main.cpp.o: \
  /usr/include/c++/11/bits/shared_ptr_atomic.h \
  /usr/include/c++/11/backward/auto_ptr.h \
  /usr/include/c++/11/pstl/glue_memory_defs.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/edt.hpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/threadpool.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/edt.hpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/threadpool.h \
  /usr/include/c++/11/queue /usr/include/c++/11/deque \
  /usr/include/c++/11/bits/stl_deque.h /usr/include/c++/11/bits/deque.tcc \
  /usr/include/c++/11/bits/stl_queue.h /usr/include/c++/11/mutex \
@@ -517,15 +516,16 @@ CMakeFiles/multisphere_app.dir/main.cpp.o: \
  /usr/include/c++/11/bits/unique_lock.h \
  /usr/include/c++/11/condition_variable /usr/include/c++/11/future \
  /usr/include/c++/11/bits/atomic_futex.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/multisphere_reconstruction.hpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/multisphere_reconstruction_helpers.hpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/multisphere_reconstruction.hpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/multisphere_datatypes.hpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/multisphere_reconstruction_helpers.hpp \
  /usr/include/c++/11/optional \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/multisphere_io.hpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/multisphere_io.hpp \
  /usr/include/c++/11/fstream /usr/include/c++/11/bits/codecvt.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/basic_file.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/c++io.h \
  /usr/include/c++/11/bits/fstream.tcc \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/cnpy.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/cnpy.h \
  /usr/include/zlib.h /usr/include/zconf.h /usr/include/unistd.h \
  /usr/include/x86_64-linux-gnu/bits/posix_opt.h \
  /usr/include/x86_64-linux-gnu/bits/environments.h \
@@ -539,37 +539,36 @@ CMakeFiles/multisphere_app.dir/main.cpp.o: \
  /usr/include/c++/11/bits/stl_multimap.h /usr/include/c++/11/numeric \
  /usr/include/c++/11/bits/stl_numeric.h \
  /usr/include/c++/11/pstl/glue_numeric_defs.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/multisphere_voxel_processing.hpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/multisphere_utils.hpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/multisphere_mesh_handler.hpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/multisphere_voxel_processing.hpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/multisphere_mesh_handler.hpp \
  /usr/include/eigen3/Eigen/Core \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/signed_distance.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/igl_inline.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/AABB.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/Hit.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/signed_distance.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/igl_inline.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/AABB.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/Hit.h \
  /usr/include/eigen3/Eigen/Geometry \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/AABB.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/EPS.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/EPS.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/barycenter.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/barycenter.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/colon.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/colon.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/LinSpaced.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/doublearea.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/doublearea.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/edge_lengths.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/edge_lengths.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/squared_edge_lengths.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/squared_edge_lengths.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/parallel_for.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/default_num_threads.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/default_num_threads.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/sort.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/sort.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/SortableRow.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/slice.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/placeholders.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/AABB.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/EPS.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/EPS.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/barycenter.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/barycenter.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/colon.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/colon.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/LinSpaced.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/doublearea.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/doublearea.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/edge_lengths.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/edge_lengths.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/squared_edge_lengths.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/squared_edge_lengths.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/parallel_for.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/default_num_threads.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/default_num_threads.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/sort.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/sort.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/SortableRow.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/slice.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/placeholders.h \
  /usr/include/eigen3/Eigen/Sparse /usr/include/eigen3/Eigen/SparseCore \
  /usr/include/eigen3/Eigen/src/SparseCore/SparseUtil.h \
  /usr/include/eigen3/Eigen/src/SparseCore/SparseMatrixBase.h \
@@ -644,47 +643,47 @@ CMakeFiles/multisphere_app.dir/main.cpp.o: \
  /usr/include/eigen3/Eigen/src/IterativeLinearSolvers/IncompleteCholesky.h \
  /usr/include/c++/11/list /usr/include/c++/11/bits/stl_list.h \
  /usr/include/c++/11/bits/list.tcc \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/slice.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/IndexComparison.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/increment_ulp.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/increment_ulp.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/point_simplex_squared_distance.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/point_simplex_squared_distance.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/project_to_line_segment.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/project_to_line_segment.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/project_to_line.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/project_to_line.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/PlainMatrix.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/barycentric_coordinates.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/barycentric_coordinates.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/volume.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/volume.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/cross.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/cross.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/ray_box_intersect.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/ray_box_intersect.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/matlab_format.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/matlab_format.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/matlab_format.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/STR.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/find.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/find.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/verbose.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/list_to_matrix.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/list_to_matrix.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/max_size.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/max_size.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/min_size.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/min_size.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/increment_ulp.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/ray_mesh_intersect.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/ray_mesh_intersect.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/raytri.c \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/slice.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/IndexComparison.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/increment_ulp.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/increment_ulp.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/point_simplex_squared_distance.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/point_simplex_squared_distance.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/project_to_line_segment.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/project_to_line_segment.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/project_to_line.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/project_to_line.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/PlainMatrix.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/barycentric_coordinates.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/barycentric_coordinates.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/volume.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/volume.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/cross.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/cross.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/ray_box_intersect.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/ray_box_intersect.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/matlab_format.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/matlab_format.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/matlab_format.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/STR.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/find.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/find.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/verbose.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/list_to_matrix.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/list_to_matrix.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/max_size.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/max_size.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/min_size.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/min_size.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/increment_ulp.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/ray_mesh_intersect.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/ray_mesh_intersect.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/raytri.c \
  /usr/include/c++/11/math.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/box_surface_area.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/box_surface_area.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/pad_box.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/pad_box.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/box_surface_area.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/box_surface_area.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/pad_box.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/pad_box.cpp \
  /usr/include/c++/11/iomanip /usr/include/c++/11/locale \
  /usr/include/c++/11/bits/locale_facets_nonio.h \
  /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h \
@@ -693,83 +692,82 @@ CMakeFiles/multisphere_app.dir/main.cpp.o: \
  /usr/include/c++/11/bits/locale_conv.h \
  /usr/include/c++/11/bits/quoted_string.h /usr/include/c++/11/stack \
  /usr/include/c++/11/bits/stl_stack.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/WindingNumberAABB.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/winding_number.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/winding_number.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/WindingNumberTree.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/WindingNumberMethod.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/triangle_fan.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/triangle_fan.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/exterior_edges.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/exterior_edges.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/oriented_facets.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/oriented_facets.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/unique_rows.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/unique_rows.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/sortrows.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/sortrows.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/get_seconds.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/get_seconds.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/PI.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/remove_duplicate_vertices.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/remove_duplicate_vertices.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/round.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/round.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/median.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/median.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/matrix_to_list.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/matrix_to_list.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/per_face_normals.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/per_face_normals.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/cotmatrix.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/cotmatrix.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/cotmatrix_entries.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/cotmatrix_entries.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/face_areas.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/face_areas.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/dihedral_angles.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/dihedral_angles.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/dihedral_angles_intrinsic.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/dihedral_angles_intrinsic.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/massmatrix.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/massmatrix.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/massmatrix_intrinsic.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/massmatrix_intrinsic.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/sparse.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/sparse.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/repmat.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/repmat.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/voronoi_mass.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/igl_inline.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/voronoi_mass.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/circumradius.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/circumradius.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/WindingNumberAABB.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/winding_number.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/winding_number.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/WindingNumberTree.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/WindingNumberMethod.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/triangle_fan.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/triangle_fan.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/exterior_edges.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/exterior_edges.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/oriented_facets.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/oriented_facets.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/unique_rows.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/unique_rows.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/sortrows.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/sortrows.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/get_seconds.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/get_seconds.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/PI.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/remove_duplicate_vertices.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/remove_duplicate_vertices.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/round.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/round.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/median.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/median.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/matrix_to_list.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/matrix_to_list.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/per_face_normals.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/per_face_normals.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/cotmatrix.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/cotmatrix.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/cotmatrix_entries.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/cotmatrix_entries.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/face_areas.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/face_areas.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/dihedral_angles.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/dihedral_angles.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/dihedral_angles_intrinsic.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/dihedral_angles_intrinsic.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/massmatrix.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/massmatrix.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/massmatrix_intrinsic.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/massmatrix_intrinsic.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/sparse.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/sparse.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/repmat.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/repmat.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/voronoi_mass.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/igl_inline.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/voronoi_mass.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/circumradius.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/circumradius.cpp \
  /usr/include/eigen3/Eigen/QR \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/centroid.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/centroid.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/unique_simplices.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/unique_simplices.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/signed_angle.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/signed_angle.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/solid_angle.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/solid_angle.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/fast_winding_number.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/FastWindingNumberForSoups.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/centroid.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/centroid.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/unique_simplices.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/unique_simplices.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/signed_angle.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/signed_angle.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/solid_angle.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/solid_angle.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/fast_winding_number.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/FastWindingNumberForSoups.h \
  /usr/lib/gcc/x86_64-linux-gnu/11/include/float.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/fast_winding_number.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/octree.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/octree.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/signed_distance.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/signed_distance.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/per_edge_normals.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/per_edge_normals.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/per_vertex_normals.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/per_vertex_normals.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/internal_angles.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/internal_angles.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/point_mesh_squared_distance.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/point_mesh_squared_distance.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/pseudonormal_test.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/pseudonormal_test.cpp \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl/fast_winding_number.h \
- /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/multisphere_visualization.hpp
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/fast_winding_number.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/octree.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/octree.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/signed_distance.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/signed_distance.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/per_edge_normals.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/per_edge_normals.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/per_vertex_normals.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/per_vertex_normals.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/internal_angles.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/internal_angles.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/point_mesh_squared_distance.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/point_mesh_squared_distance.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/pseudonormal_test.h \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/pseudonormal_test.cpp \
+ /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl/fast_winding_number.h

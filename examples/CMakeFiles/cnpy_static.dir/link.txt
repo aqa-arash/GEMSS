@@ -1,2 +1,2 @@
-/usr/bin/ar qc libcnpy_static.a CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o
+/usr/bin/ar qc libcnpy_static.a CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o
 /usr/bin/ranlib libcnpy_static.a

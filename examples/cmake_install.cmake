@@ -1,4 +1,4 @@
-# Install script for directory: /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp
+# Install script for directory: /nishome/arash/Documents/multisphere-cpp/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

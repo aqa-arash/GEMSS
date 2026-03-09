@@ -53,7 +53,7 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp
+CMAKE_SOURCE_DIR = /nishome/arash/Documents/multisphere-cpp/src
 
 # The top-level build directory on which CMake was run.
 CMAKE_BINARY_DIR = /nishome/arash/Documents/multisphere-cpp/examples
@@ -69,28 +69,28 @@ include CMakeFiles/cnpy_static.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/cnpy_static.dir/flags.make
 
-CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o: CMakeFiles/cnpy_static.dir/flags.make
-CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o: /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/cnpy.cpp
-CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o: CMakeFiles/cnpy_static.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/nishome/arash/Documents/multisphere-cpp/examples/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o -MF CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o.d -o CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o -c /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/cnpy.cpp
+CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o: CMakeFiles/cnpy_static.dir/flags.make
+CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o: /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/cnpy.cpp
+CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o: CMakeFiles/cnpy_static.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/nishome/arash/Documents/multisphere-cpp/examples/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o -MF CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o.d -o CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o -c /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/cnpy.cpp
 
-CMakeFiles/cnpy_static.dir/include/cnpy.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/cnpy_static.dir/include/cnpy.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/cnpy.cpp > CMakeFiles/cnpy_static.dir/include/cnpy.cpp.i
+CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/cnpy.cpp > CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.i
 
-CMakeFiles/cnpy_static.dir/include/cnpy.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/cnpy_static.dir/include/cnpy.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/cnpy.cpp -o CMakeFiles/cnpy_static.dir/include/cnpy.cpp.s
+CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/cnpy.cpp -o CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.s
 
 # Object files for target cnpy_static
 cnpy_static_OBJECTS = \
-"CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o"
+"CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o"
 
 # External object files for target cnpy_static
 cnpy_static_EXTERNAL_OBJECTS =
 
-libcnpy_static.a: CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o
+libcnpy_static.a: CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o
 libcnpy_static.a: CMakeFiles/cnpy_static.dir/build.make
 libcnpy_static.a: CMakeFiles/cnpy_static.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/nishome/arash/Documents/multisphere-cpp/examples/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX static library libcnpy_static.a"
@@ -106,6 +106,6 @@ CMakeFiles/cnpy_static.dir/clean:
 .PHONY : CMakeFiles/cnpy_static.dir/clean
 
 CMakeFiles/cnpy_static.dir/depend:
-	cd /nishome/arash/Documents/multisphere-cpp/examples && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp /nishome/arash/Documents/multisphere-cpp/examples /nishome/arash/Documents/multisphere-cpp/examples /nishome/arash/Documents/multisphere-cpp/examples/CMakeFiles/cnpy_static.dir/DependInfo.cmake --color=$(COLOR)
+	cd /nishome/arash/Documents/multisphere-cpp/examples && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /nishome/arash/Documents/multisphere-cpp/src /nishome/arash/Documents/multisphere-cpp/src /nishome/arash/Documents/multisphere-cpp/examples /nishome/arash/Documents/multisphere-cpp/examples /nishome/arash/Documents/multisphere-cpp/examples/CMakeFiles/cnpy_static.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/cnpy_static.dir/depend
 

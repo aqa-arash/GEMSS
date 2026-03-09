@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -DHAVE_OPENMP
 
-CXX_INCLUDES = -I/nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp -I/nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include -I/nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/igl -isystem /usr/include/eigen3
+CXX_INCLUDES = -I/nishome/arash/Documents/multisphere-cpp/src -I/nishome/arash/Documents/multisphere-cpp/src/include -I/nishome/arash/Documents/multisphere-cpp/src/include/thirdparty -I/nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/igl -isystem /usr/include/eigen3
 
 CXX_FLAGS = -O3 -march=native -fopenmp -std=gnu++17
 

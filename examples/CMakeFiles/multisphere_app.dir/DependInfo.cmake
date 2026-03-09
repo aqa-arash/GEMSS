@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/main.cpp" "CMakeFiles/multisphere_app.dir/main.cpp.o" "gcc" "CMakeFiles/multisphere_app.dir/main.cpp.o.d"
+  "/nishome/arash/Documents/multisphere-cpp/src/main.cpp" "CMakeFiles/multisphere_app.dir/main.cpp.o" "gcc" "CMakeFiles/multisphere_app.dir/main.cpp.o.d"
   )
 
 # Targets to which this target links.

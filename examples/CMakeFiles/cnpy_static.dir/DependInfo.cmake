@@ -8,7 +8,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/include/cnpy.cpp" "CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o" "gcc" "CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o.d"
+  "/nishome/arash/Documents/multisphere-cpp/src/include/thirdparty/cnpy.cpp" "CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o" "gcc" "CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o.d"
   )
 
 # Targets to which this target links.

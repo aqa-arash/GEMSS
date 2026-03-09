@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o"
-  "CMakeFiles/cnpy_static.dir/include/cnpy.cpp.o.d"
+  "CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o"
+  "CMakeFiles/cnpy_static.dir/include/thirdparty/cnpy.cpp.o.d"
   "libcnpy_static.a"
   "libcnpy_static.pdb"
 )

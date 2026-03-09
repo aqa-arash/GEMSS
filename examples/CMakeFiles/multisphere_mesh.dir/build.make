@@ -53,7 +53,7 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp
+CMAKE_SOURCE_DIR = /nishome/arash/Documents/multisphere-cpp/src
 
 # The top-level build directory on which CMake was run.
 CMAKE_BINARY_DIR = /nishome/arash/Documents/multisphere-cpp/examples
@@ -70,18 +70,18 @@ include CMakeFiles/multisphere_mesh.dir/progress.make
 include CMakeFiles/multisphere_mesh.dir/flags.make
 
 CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o: CMakeFiles/multisphere_mesh.dir/flags.make
-CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o: /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/main_mesh.cpp
+CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o: /nishome/arash/Documents/multisphere-cpp/src/main_mesh.cpp
 CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o: CMakeFiles/multisphere_mesh.dir/compiler_depend.ts
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/nishome/arash/Documents/multisphere-cpp/examples/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o -MF CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o.d -o CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o -c /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/main_mesh.cpp
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o -MF CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o.d -o CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.o -c /nishome/arash/Documents/multisphere-cpp/src/main_mesh.cpp
 
 CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/main_mesh.cpp > CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /nishome/arash/Documents/multisphere-cpp/src/main_mesh.cpp > CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.i
 
 CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp/main_mesh.cpp -o CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /nishome/arash/Documents/multisphere-cpp/src/main_mesh.cpp -o CMakeFiles/multisphere_mesh.dir/main_mesh.cpp.s
 
 # Object files for target multisphere_mesh
 multisphere_mesh_OBJECTS = \
@@ -109,6 +109,6 @@ CMakeFiles/multisphere_mesh.dir/clean:
 .PHONY : CMakeFiles/multisphere_mesh.dir/clean
 
 CMakeFiles/multisphere_mesh.dir/depend:
-	cd /nishome/arash/Documents/multisphere-cpp/examples && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp /nishome/arash/Documents/multisphere-cpp/src/multisphere-cpp /nishome/arash/Documents/multisphere-cpp/examples /nishome/arash/Documents/multisphere-cpp/examples /nishome/arash/Documents/multisphere-cpp/examples/CMakeFiles/multisphere_mesh.dir/DependInfo.cmake --color=$(COLOR)
+	cd /nishome/arash/Documents/multisphere-cpp/examples && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /nishome/arash/Documents/multisphere-cpp/src /nishome/arash/Documents/multisphere-cpp/src /nishome/arash/Documents/multisphere-cpp/examples /nishome/arash/Documents/multisphere-cpp/examples /nishome/arash/Documents/multisphere-cpp/examples/CMakeFiles/multisphere_mesh.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/multisphere_mesh.dir/depend
 
