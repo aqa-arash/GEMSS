@@ -1,14 +1,29 @@
 #ifndef MULTISPHERE_IO_HPP
 #define MULTISPHERE_IO_HPP
 
+/**
+ * @file multisphere_io.hpp
+ * @brief Input/output utilities for multisphere-cpp library.
+ *
+ * Provides mesh loading, sphere pack export, voxel grid export, and STL/NPY file utilities.
+ *
+ * @author Arash Moradian
+ * @date 2026-03-09
+ */
+
 #include <iostream>
 #include <vector>
 #include <string>
 #include <fstream>
 #include <Eigen/Dense>
-#include "include/cnpy.h"
+#include "thirdparty/cnpy.h"
 #include "multisphere_datatypes.hpp"
 
+/**
+ * @brief Loads a mesh from a binary STL file.
+ * @param path Path to STL file.
+ * @return FastMesh structure.
+ */
 inline FastMesh load_mesh_fast(const std::string& path) {
     std::ifstream file(path, std::ios::binary);
     if (!file) throw std::runtime_error("File not found: " + path);
@@ -80,8 +95,12 @@ inline FastMesh load_mesh_fast(const std::string& path) {
     return mesh;
 }
 
-
-void export_to_csv(const SpherePack& sp, const std::string& path) {
+/**
+ * @brief Exports a SpherePack to CSV.
+ * @param sp SpherePack to export.
+ * @param path Output CSV file path.
+ */
+inline void export_to_csv(const SpherePack& sp, const std::string& path) {
     std::ofstream file(path);
     // Add a buffer to speed up I/O
     std::vector<char> buffer(65536); 
@@ -96,7 +115,12 @@ void export_to_csv(const SpherePack& sp, const std::string& path) {
     }
 }
 
-void export_to_vtk(const SpherePack& sp, const std::string& path) {
+/**
+ * @brief Exports a SpherePack to legacy VTK format.
+ * @param sp SpherePack to export.
+ * @param path Output VTK file path.
+ */
+inline void export_to_vtk(const SpherePack& sp, const std::string& path) {
     std::ofstream f(path);
     size_t n = sp.num_spheres();
 
@@ -117,18 +141,21 @@ void export_to_vtk(const SpherePack& sp, const std::string& path) {
     f << "POINT_DATA " << n << "\nSCALARS radius float 1\nLOOKUP_TABLE default\n";
     for (int i = 0; i < n; ++i) f << (float)sp.radii(i) << "\n";
 }
+
 /**
  * @brief Exports a VoxelGrid distance transform to a Legacy VTK file.
  * Now templatized to handle VoxelGrid<T> regardless of the underlying data type.
+ * @tparam T VoxelGrid data type.
+ * @param grid VoxelGrid to export.
+ * @param path Output VTK file path.
  */
 template <typename T>
-void export_voxel_grid_to_vtk(const VoxelGrid<T>& grid, const std::string& path) {
+inline void export_voxel_grid_to_vtk(const VoxelGrid<T>& grid, const std::string& path) {
     std::ofstream file(path);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open file for writing: " + path);
     }
 
-    // Accessing members (Ensure these are public or have getters in your VoxelGrid class)
     int nx = grid.shape[0];
     int ny = grid.shape[1];
     int nz = grid.shape[2];
@@ -144,7 +171,6 @@ void export_voxel_grid_to_vtk(const VoxelGrid<T>& grid, const std::string& path)
 
     file << "POINT_DATA " << (nx * ny * nz) << "\n";
     
-    // Logic: Identify VTK type based on T
     std::string type_name = "float";
     if constexpr (std::is_same_v<T, double>) type_name = "double";
     if constexpr (std::is_same_v<T, int>)    type_name = "int";
@@ -152,8 +178,6 @@ void export_voxel_grid_to_vtk(const VoxelGrid<T>& grid, const std::string& path)
     file << "SCALARS distance_transform " << type_name << " 1\n";
     file << "LOOKUP_TABLE default\n";
 
-    // Flattened data output
-    // Assumption: grid.data is a std::vector<T> or similar container
     for (const auto& value : grid.data) {
         file << value << "\n";
     }
@@ -161,72 +185,70 @@ void export_voxel_grid_to_vtk(const VoxelGrid<T>& grid, const std::string& path)
     file.close();
 }
 
-
-VoxelGrid<bool> load_voxels_from_npy(const std::string& path, double voxel_size) {
+/**
+ * @brief Loads a VoxelGrid<bool> from a .npy file.
+ * @param path Path to .npy file.
+ * @param voxel_size Physical voxel size.
+ * @return VoxelGrid<bool> loaded from file.
+ */
+inline VoxelGrid<bool> load_voxels_from_npy(const std::string& path, double voxel_size) {
     cnpy::NpyArray arr = cnpy::npy_load(path);
     if (arr.shape.size() != 3) throw std::runtime_error("Array must be 3D");
 
     VoxelGrid<bool> grid(arr.shape[0], arr.shape[1], arr.shape[2], voxel_size);
     
-    // Direct memory copy (memcpy) is the fastest way to load the data
     bool* loaded_data = arr.data<bool>();
     std::copy(loaded_data, loaded_data + grid.data.size(), grid.data.begin());
     
     return grid;
 }
 
-
+/**
+ * @brief Saves a VoxelGrid to a .npy file.
+ * @tparam T VoxelGrid data type.
+ * @param path Output .npy file path.
+ * @param grid VoxelGrid to save.
+ */
 template<typename T>
-void save_voxels_to_npy(const std::string& path, const VoxelGrid<T>& grid) {
-    // 1. Define the shape of the 3D array for NumPy (Z, Y, X)
-    // Note: NumPy usually expects C-style (Row-Major) layout
+inline void save_voxels_to_npy(const std::string& path, const VoxelGrid<T>& grid) {
     std::vector<size_t> shape = {
         static_cast<size_t>(grid.shape[0]), 
         static_cast<size_t>(grid.shape[1]), 
         static_cast<size_t>(grid.shape[2])
     };
-
-    // 2. Use npy_save
-    // Arguments: Filename, Data Pointer, Shape Vector, Mode ("w" overrides, "a" appends)
     cnpy::npy_save(path, grid.data.data(), shape, "w");
 }
 
-
+/**
+ * @brief Saves a FastMesh to a binary STL file.
+ * @param mesh FastMesh to save.
+ * @param output_path Output STL file path.
+ */
 inline void save_mesh_to_stl(const FastMesh& mesh, const std::string& output_path) {
     std::ofstream file(output_path, std::ios::binary);
     if (!file) throw std::runtime_error("Could not open file for writing: " + output_path);
 
-    // 1. Write Header (80 bytes)
     char header[80] = {0};
     std::string title = "Debug Export";
     std::copy(title.begin(), title.end(), header);
     file.write(header, 80);
 
-    // 2. Write Triangle Count (4 bytes)
     uint32_t n_tris = static_cast<uint32_t>(mesh.triangles.rows());
     file.write(reinterpret_cast<const char*>(&n_tris), 4);
 
-    // 3. Write Triangles (50 bytes each)
-    // Structure: Normal(12) + V1(12) + V2(12) + V3(12) + Attr(2)
     for (uint32_t i = 0; i < n_tris; ++i) {
-        // A. Normal - We just write zero (0,0,0) as we don't store normals in FastMesh
-        // Most viewers (MeshLab, Paraview) will auto-calculate them.
         float normal[3] = {0.0f, 0.0f, 0.0f};
         file.write(reinterpret_cast<char*>(normal), 12);
 
-        // B. Vertices
         for (int v = 0; v < 3; ++v) {
             int v_idx = mesh.triangles(i, v);
-            // Access Eigen row
             float x = mesh.vertices(v_idx, 0);
             float y = mesh.vertices(v_idx, 1);
             float z = mesh.vertices(v_idx, 2);
-            
             float vert_data[3] = {x, y, z};
             file.write(reinterpret_cast<char*>(vert_data), 12);
         }
 
-        // C. Attribute byte count (2 bytes)
         uint16_t attr = 0;
         file.write(reinterpret_cast<char*>(&attr), 2);
     }
@@ -234,7 +256,4 @@ inline void save_mesh_to_stl(const FastMesh& mesh, const std::string& output_pat
     std::cout << "[IO] Saved debug mesh to: " << output_path << std::endl;
 }
 
-
-
-
-#endif
+#endif // MULTISPHERE_IO_HPP

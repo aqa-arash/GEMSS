@@ -1,16 +1,43 @@
+/**
+ * @file main_boost.cpp
+ * @brief Demonstrates multisphere reconstruction for various geometries (ellipsoid, cube) using the multisphere-cpp header-only library.
+ * 
+ * Generates voxel grids, performs distance transforms, and reconstructs sphere packs.
+ * Outputs results to CSV and VTK files.
+ * 
+ * @author Arash Moradian
+ * @date 2026-03-09
+ */
+
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <string>
 #include <filesystem> 
 #include <Eigen/Dense>
+
+// Project headers
 #include "multisphere_datatypes.hpp"
 #include "multisphere_reconstruction.hpp"
-#include "multisphere_visualization.hpp"
-#include "cnpy.h" 
+
+// Third-party headers
+#include "thirdparty/cnpy.h" 
+
 
 namespace fs = std::filesystem;
 
+/**
+ * @brief Entry point for multisphere reconstruction demo.
+ * 
+ * Runs three cases:
+ *   1. Ellipsoid with overlapping spheres.
+ *   2. Ellipsoid with minimal sphere overlap.
+ *   3. Cube with medial axis extraction.
+ * 
+ * Outputs CSV summaries and VTK files for visualization.
+ * 
+ * @return int Exit code.
+ */
 int main() {
     // 1. Directory Setup
     std::string base_dir = "Boost_study_output";
@@ -32,7 +59,8 @@ int main() {
     const int nx = 256, ny = 256, nz = 256;
     Eigen::Vector3f center_point = Eigen::Vector3f(nx/2.0f, ny/2.0f, nz/2.0f);
     const float v_size = 1.0f; // voxel size
-       // Initialize Boolean Grid
+    // Initialize Boolean Grid
+    // TODO: We can optimize memory usage by directly working with uint8_t for boolean values, but for clarity we use VoxelGrid<bool> here and convert later for cnpy.
     VoxelGrid<bool> grid(nx, ny, nz, v_size);
     std::vector<uint8_t> bool_buffer(nx * ny * nz, 0);
 
@@ -51,7 +79,7 @@ int main() {
 
 
 
-    // 3. Generate Ellipsoid Geometry DO NOT PARALLELIZE
+    // 3. Generate Ellipsoid Geometry DO NOT PARALLELIZE (FAILS ON BOOLEAN)
     for (int z = 0; z < nz; ++z) {
         for (int y = 0; y < ny; ++y) {
             for (int x = 0; x < nx; ++x) {
@@ -76,7 +104,7 @@ int main() {
     }
 
     // 3. Distance Transform & Export
-    VoxelGrid<float> edt_grid = grid.distance_transform(); 
+    edt_grid = grid.distance_transform(); 
 
     cnpy::npy_save(bool_dir + "/bool_step_"  + ".npy", 
                     bool_buffer.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
@@ -85,6 +113,7 @@ int main() {
                     edt_grid.data.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
 
     Eigen::MatrixX4f sphere_table = Eigen::MatrixX4f(2, 4); // Empty table for initial reconstruction
+    
     // Add two large spheres close to the center to kickstart the reconstruction
 
     float center_distance = 20.0f; // Distance from center for initial spheres
