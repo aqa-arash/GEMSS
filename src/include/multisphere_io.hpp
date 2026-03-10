@@ -1,5 +1,5 @@
-#ifndef MULTISPHERE_IO_HPP
-#define MULTISPHERE_IO_HPP
+ #ifndef MULTISPHERE_IO_HPP
+ #define MULTISPHERE_IO_HPP
 
 /**
  * @file multisphere_io.hpp
@@ -17,7 +17,10 @@
 #include <fstream>
 #include <Eigen/Dense>
 #include "thirdparty/cnpy.h"
+
 #include "multisphere_datatypes.hpp"
+
+namespace MSS {
 
 /**
  * @brief Loads a mesh from a binary STL file.
@@ -255,5 +258,8 @@ inline void save_mesh_to_stl(const FastMesh& mesh, const std::string& output_pat
     
     std::cout << "[IO] Saved debug mesh to: " << output_path << std::endl;
 }
+
+
+} // namespace MSS
 
 #endif // MULTISPHERE_IO_HPP

@@ -24,6 +24,8 @@
 
 #include "multisphere_datatypes.hpp"
 
+namespace MSS {
+
 /**
  * @brief Kernel operation modes for voxel grid processing.
  */
@@ -304,5 +306,7 @@ FastMesh grid_to_mesh(const VoxelGrid<T>& grid, T threshold = static_cast<T>(0))
 
     return mesh;
 }
+
+} // namespace MSS
 
 #endif // MULTISPHERE_VOXEL_PROCESSING_HPP

@@ -27,6 +27,8 @@
 #include "multisphere_io.hpp"
 #include "multisphere_mesh_handler.hpp"
 
+namespace MSS {
+
 /**
  * @brief Construct multisphere from voxel grid.
  * Iteratively detects peaks, filters, and converts to physical units.
@@ -283,3 +285,5 @@ SpherePack multisphere_from_mesh(
 }
 
 #endif // MULTISPHERE_RECONSTRUCTION_HPP
+
+} // namespace MSS

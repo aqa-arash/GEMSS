@@ -15,9 +15,9 @@
 #include <Eigen/Dense>
 
 // Project headers
-#include "multisphere_datatypes.hpp"
-#include "multisphere_io.hpp"
-#include "multisphere_reconstruction.hpp" // Contains the main algorithm logic
+#include "multisphere-interface.h"
+
+using namespace MSS;
 
 /**
  * @brief Entry point for mesh-based multisphere reconstruction.
@@ -30,7 +30,7 @@ int main() {
     std::cout << "--- Multisphere Reconstruction Test ---" << std::endl;
 
     // List of mesh files to process
-    std::vector<std::string> models = { "xyzrgb_dragon.stl" };
+    std::vector<std::string> models = { "stanford-bunny.stl" };
 
     for (const auto& model_name : models) {
         // 1. Load mesh from file

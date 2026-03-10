@@ -19,7 +19,7 @@
 
 # multisphere-cpp
 
-`multisphere-cpp` creates overlapping-sphere representations of arbitrary 3D geometries based on voxelized Euclidean distance transforms (EDT) and feature-enhanced distance fields (FEDT). The algorithm is designed for Discrete Element Method (DEM) simulations, where accurate yet computationally efficient particle shape representations are essential.
+`multisphere-cpp` creates overlapping-sphere representations of arbitrary 3D geometries based on voxelized Euclidean distance transforms (EDT) and feature-enhanced distance transform (FEDT) fields. The algorithm is designed for Discrete Element Method (DEM) simulations, where accurate yet computationally efficient particle shape representations are essential.
 
 **This repository is a fork of the [Python implementation by Felix Buchele](https://github.com/FelixBuchele/multisphere).**
 
@@ -47,7 +47,7 @@ The multisphere algorithm is based on:
 - Voxelization of the target geometry
 - Exact Euclidean Distance Transform (EDT)
 - Peak refinement of EDT maxima
-- Iterative residual correction using the Feature-Enhanced Distance Tensor (FEDT)
+- Iterative residual correction using the Feature-Enhanced Distance Transform (FEDT)
 - Termination by shape accuracy, minimum radius, or maximum sphere count
 
 The use of FEDT preserves the medial axis of the geometry and avoids the major drawbacks of greedy sphere removal methods, such as spurious small spheres, symmetry violations, and excessive runtime.
@@ -81,44 +81,52 @@ make -j4
 
 ### Using as a Header-Only Library
 
+
+
 You can use `multisphere-cpp` as a header-only library in your own project:
 - Add the `include/` directory to your compiler's include path.
-- `#include` the relevant headers (e.g., `#include "multisphere_reconstruction.hpp"`).
+- **Single include:** `#include "multisphere-interface.h"` gives you access to the entire public API.
+- **All public API is in the `MSS` namespace.** You must either prefix all types and functions with `MSS::`, or add `using namespace MSS;` in your `.cpp` files.
+- **Default argument values** for API functions are shown as comments in the interface header for clarity.
 - **Note:** The `Eigen` library is required but **not provided** in the `include/` directory. You must have Eigen installed and available in your include path.
 - **Note:** The `cnpy` library requires `zlib` to be available on your system.
 - It is recommended to use the provided CMake configuration, or ensure your own CMake setup finds and links all required dependencies (`Eigen`, `zlib`, etc.) when including `multisphere-cpp` headers.
 - No need to build the example executables unless you want to run the demos.
 
+
 ### Basic C++ Usage
 
-The core API is provided via `multisphere_reconstruction.hpp`.
+
+The core API is provided via the umbrella header `multisphere-interface.h` and is in the `MSS` namespace.
 
 ```cpp
-#include "multisphere_reconstruction.hpp"
-#include "multisphere_io.hpp"
+#include "multisphere-interface.h"
+
+using namespace MSS; // Or use MSS:: prefix for all types/functions
 
 int main() {
-    // 1. Load Mesh
-    FastMesh mesh = load_mesh_fast("example_mesh.stl");
+  // 1. Load Mesh
+  FastMesh mesh = load_mesh_fast("example_mesh.stl");
 
-    // 2. Run Reconstruction
-    SpherePack sp = multisphere_from_mesh(
-        mesh,
-        150,    // div (resolution)
-        2,      // padding
-        8,      // min_radius_vox
-        0.99,   // precision_target
-        4,      // min_center_distance_vox
-        100,    // max_spheres
-        true,   // show_progress
-        false   // confine_mesh 
-    );
+  // 2. Run Reconstruction
+  SpherePack sp = multisphere_from_mesh(
+    mesh,
+    150,    // div (resolution)
+    2,      // padding
+    8,      // min_radius_vox
+    0.99,   // precision_target
+    4,      // min_center_distance_vox
+    100,    // max_spheres
+    true,   // show_progress
+    false   // confine_mesh
+    // existing sphere pack can be passed as an additional argument
+  );
 
-    // 3. Export
-    export_to_csv(sp, "results.csv");
-    export_to_vtk(sp, "results.vtk");
-    save_mesh_to_stl(grid_to_mesh(sp), "results.stl");
-    return 0;
+  // 3. Export
+  export_to_csv(sp, "results.csv");
+  export_to_vtk(sp, "results.vtk");
+  save_mesh_to_stl(grid_to_mesh(sp), "results.stl");
+  return 0;
 }
 ```
 

@@ -1,9 +1,11 @@
+
 #ifndef MULTISPHERE_DATATYPES_HPP
 #define MULTISPHERE_DATATYPES_HPP
 
+
 /**
  * @file multisphere_datatypes.hpp
- * @brief Core data structures for multisphere-cpp library.
+ * @brief Core data structures for multisphere-cpp library (namespace MSS).
  *
  * Defines FastMesh, SpherePack, VoxelGrid, and utility types for mesh and voxel operations.
  * Provides distance transform and sphere kernel generation.
@@ -21,6 +23,9 @@
 #include <memory>
 #include <Eigen/Dense>
 #include "thirdparty/edt.hpp" ///< High-performance C++ EDT library
+
+
+namespace MSS {
 
 /**
  * @brief Mesh structure for fast voxelization.
@@ -195,5 +200,7 @@ struct VertexKeyHash {
               (std::hash<float>()(k.z) << 2);
     }
 };
+
+} // namespace MSS
 
 #endif // MULTISPHERE_DATATYPES_HPP

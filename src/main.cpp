@@ -14,8 +14,9 @@
 #include <vector>
 #include <cmath>
 #include <Eigen/Dense>
-#include "multisphere_datatypes.hpp"
-#include "multisphere_reconstruction.hpp"
+#include "multisphere-interface.h"
+
+using namespace MSS;
 
 /**
  * @brief Entry point for synthetic geometry reconstruction demo.
@@ -207,6 +208,7 @@ int main() {
     // ---------------------------------------------------
     std::cout << "[2/3] Running reconstruction..." << std::endl;
 
+    // voxelgrid, min_center_distance_vox, max_weight, min_radius_vox, precision_target, max_spheres, use_boost, initial_sphere_table
     SpherePack single_sp = multisphere_from_voxels(single_sphere, 4, 1, 2, 0.95, 10, true);
     SpherePack double_sp = multisphere_from_voxels(double_sphere, 4, 1, 2, 0.95, 10, true);
     SpherePack rectangle_sp = multisphere_from_voxels(rectangle, 4, 1, 2, 0.95, 10, true);

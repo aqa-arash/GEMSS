@@ -17,8 +17,9 @@
 #include <Eigen/Dense>
 
 // Project headers
-#include "multisphere_datatypes.hpp"
-#include "multisphere_reconstruction.hpp"
+#include "multisphere-interface.h"
+
+using namespace MSS;
 
 // Third-party headers
 #include "thirdparty/cnpy.h"

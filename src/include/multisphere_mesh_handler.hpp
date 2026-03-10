@@ -32,6 +32,28 @@
 #include <igl/fast_winding_number.h>
 #pragma GCC diagnostic pop
 
+// Namespace MSS for all library code
+namespace MSS {
+
+/** 
+ * @brief Get the minimum axis-aligned bounding box dimension.
+ * @param mesh Input mesh.
+ * @return Minimum extent of the AABB.
+ * Note: This is used to determine voxel size for grid construction. Where h = min_extent / div.
+ */
+
+float get_min_AABB(const FastMesh & mesh)  {
+    // 1. Setup Grid & Bounds
+    Eigen::Vector3f min_v = mesh.vertices.colwise().minCoeff().transpose();
+    Eigen::Vector3f max_v = mesh.vertices.colwise().maxCoeff().transpose();
+    Eigen::Vector3f extents = max_v - min_v;
+
+    float min_extent = extents.minCoeff();
+    if (min_extent <= 1e-6) min_extent = (extents.maxCoeff() > 0 ? extents.maxCoeff() : 1.0f);
+
+    return min_extent;
+}
+
 /**
  * @brief Robust voxelizer using generalized winding number.
  *        Best for "dirty" meshes (holes, self-intersections, internal faces).
@@ -42,22 +64,19 @@
  */
 inline VoxelGrid<bool> mesh_to_binary_grid(const FastMesh& mesh, int div, int padding = 2) {
     if (mesh.vertices.rows() == 0) throw std::invalid_argument("Mesh is empty.");
-
     // 1. Setup Grid & Bounds
     Eigen::Vector3f min_v = mesh.vertices.colwise().minCoeff().transpose();
     Eigen::Vector3f max_v = mesh.vertices.colwise().maxCoeff().transpose();
     Eigen::Vector3f extents = max_v - min_v;
-
     float min_extent = extents.minCoeff();
     if (min_extent <= 1e-6) min_extent = (extents.maxCoeff() > 0 ? extents.maxCoeff() : 1.0f);
-
     float voxel_size = min_extent / static_cast<float>(div);
 
     int nx = std::ceil(extents.x() / voxel_size) + 2 * padding;
     int ny = std::ceil(extents.y() / voxel_size) + 2 * padding;
     int nz = std::ceil(extents.z() / voxel_size) + 2 * padding;
 
-    Eigen::Vector3f origin = min_v.cast<float>() - (float)padding * voxel_size * Eigen::Vector3f::Ones();
+    Eigen::Vector3f origin = min_v.cast<float>() - static_cast<float>(padding) * voxel_size * Eigen::Vector3f::Ones();
 
     std::cout << "[Voxelizer] Grid: " << nx << "x" << ny << "x" << nz 
               << " | Method: Generalized Winding Number (Robust)" << std::endl;
@@ -72,9 +91,9 @@ inline VoxelGrid<bool> mesh_to_binary_grid(const FastMesh& mesh, int div, int pa
         for (int y = 0; y < ny; ++y) {
             for (int z = 0; z < nz; ++z) {
                 int idx = x * (ny * nz) + y * nz + z;
-                queries(idx, 0) = static_cast<float>(origin.x() + (x + 0.5) * voxel_size);
-                queries(idx, 1) = static_cast<float>(origin.y() + (y + 0.5) * voxel_size);
-                queries(idx, 2) = static_cast<float>(origin.z() + (z + 0.5) * voxel_size);
+                queries(idx, 0) = static_cast<float>(origin.x() + (x + 0.5f) * voxel_size);
+                queries(idx, 1) = static_cast<float>(origin.y() + (y + 0.5f) * voxel_size);
+                queries(idx, 2) = static_cast<float>(origin.z() + (z + 0.5f) * voxel_size);
             }
         }
     }
@@ -117,5 +136,7 @@ inline void constrain_radii_to_sdf(SpherePack& pack, const FastMesh& mesh) {
     // Update radii: snap to surface (abs(sdf))
     pack.radii = pack.radii.array().min(sdf.array().abs());
 }
+
+} // namespace MSS
 
 #endif // MULTISPHERE_MESH_HANDLER_HPP

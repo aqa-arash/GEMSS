@@ -21,6 +21,8 @@
 #include "multisphere_io.hpp"
 #include "multisphere_voxel_processing.hpp"
 
+namespace MSS {
+
 /**
  * @brief Computes squared Euclidean distance between two 3D points.
  * @param a First point.
@@ -240,5 +242,7 @@ inline VoxelGrid<float> residual_distance_field(
     }
     return residual;
 }
+
+} // namespace MSS
 
 #endif // MULTISPHERE_RECONSTRUCTION_HELPERS_HPP
