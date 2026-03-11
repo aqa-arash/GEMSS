@@ -160,7 +160,7 @@ SpherePack multisphere_from_voxels(
                 std::cout << " No peaks found after filtering, for iter = " << iter << std::endl;
             #endif
             if (iter >= max_iter) {
-                std::cout << " Terminating." << std::endl;
+                std::cout << "No peaks found after filtering, terminating." << std::endl;
                 break;
             } else {
                 peaks_found = false;
