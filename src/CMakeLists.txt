@@ -65,7 +65,6 @@ if(USE_OPENMP AND OpenMP_CXX_FOUND)
     target_link_libraries(multisphere_lib INTERFACE OpenMP::OpenMP_CXX)
 endif()
 
-# 4. Debugging
 if(MULTISPHERE_DEBUG)
     target_compile_definitions(multisphere_lib INTERFACE MULTISPHERE_DEBUG)
 endif()
