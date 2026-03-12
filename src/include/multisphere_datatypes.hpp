@@ -92,23 +92,8 @@ public:
      * @brief Compute distance transform using EDT library.
      * @return VoxelGrid<float> with physical distances.
      */
-    VoxelGrid<float> distance_transform() const {
+    VoxelGrid<float> distance_transform(bool binary_mode = true ) const {
         VoxelGrid<float> result(nx(), ny(), nz(), voxel_size, origin);
-
-        const uint8_t* data_ptr = nullptr;
-        std::vector<uint8_t> temp_mask;
-
-        if constexpr (std::is_same<T, uint8_t>::value) {
-            data_ptr = reinterpret_cast<const uint8_t*>(this->data.data());
-        } 
-        else {
-            temp_mask.resize(this->data.size());
-            #pragma omp parallel for
-            for(size_t i = 0; i < this->data.size(); ++i) {
-                temp_mask[i] = (this->data[i] > static_cast<T>(0)) ? 1 : 0;
-            }
-            data_ptr = temp_mask.data();
-        }
 
         int num_threads = 1;
         #ifdef HAVE_OPENMP
@@ -118,23 +103,46 @@ public:
             if (num_threads == 0) num_threads = 1;
         #endif
 
-        float* dists = edt::edt<uint8_t>(
-            const_cast<uint8_t*>(data_ptr), 
-            static_cast<int>(shape[2]), 
-            static_cast<int>(shape[1]), 
-            static_cast<int>(shape[0]), 
-            1.0f, 1.0f, 1.0f, 
-            true, num_threads, nullptr
-        );
+        float* dists = nullptr;
+
+        if (binary_mode) {
+            // Binary mode: Flatten all labels > 0 into a uniform mask of 1s
+            std::vector<uint8_t> temp_mask(this->data.size());
+            #pragma omp parallel for
+            for(size_t i = 0; i < this->data.size(); ++i) {
+                temp_mask[i] = (this->data[i] > static_cast<T>(0)) ? 1 : 0;
+            }
+            
+            dists = edt::binary_edt<uint8_t>(
+                temp_mask.data(), 
+                static_cast<int>(shape[2]), 
+                static_cast<int>(shape[1]), 
+                static_cast<int>(shape[0]), 
+                1.0f, 1.0f, 1.0f, 
+                true, num_threads, nullptr
+            );
+        } else {
+            // Multi-label mode: Pass the raw templated data directly
+            // The EDT library uses 0 as universal background and >0 as distinct boundaries
+            dists = edt::edt<T>(
+                const_cast<T*>(this->data.data()), 
+                static_cast<int>(shape[2]), 
+                static_cast<int>(shape[1]), 
+                static_cast<int>(shape[0]), 
+                1.0f, 1.0f, 1.0f, 
+                true, num_threads, nullptr
+            );
+        }
         
         #pragma omp parallel for
         for(size_t i = 0; i < this->data.size(); ++i) {
             result.data[i] = dists[i];
         }
 
-        free(dists);
+        delete[] dists; // Corrected memory deallocation
         return result;
     }
+    
 
     /**
      * @brief Fill grid with a sphere kernel.
