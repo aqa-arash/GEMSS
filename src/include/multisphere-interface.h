@@ -21,6 +21,7 @@
 #include "multisphere_reconstruction_helpers.hpp"
 #include "multisphere_reconstruction.hpp"
 #include "multisphere_voxel_processing.hpp"
+#include "multisphere_config.hpp"
 
 namespace MSS {
 
@@ -57,6 +58,7 @@ inline VoxelGrid<bool> mesh_to_binary_grid(const FastMesh& mesh, int div, int pa
  * @brief Multisphere reconstruction from a voxel grid.
  * @tparam T VoxelGrid data type.
  * @param input_grid Input voxel grid.
+ * @param config MultisphereConfig struct containing all configuration parameters:
  * @param min_center_distance_vox Minimum center distance (voxels).
  * @param min_radius_vox Minimum radius (voxels).
  * @param precision_target Target precision.
@@ -69,18 +71,13 @@ inline VoxelGrid<bool> mesh_to_binary_grid(const FastMesh& mesh, int div, int pa
 template <typename T>
 SpherePack multisphere_from_voxels(
 	const VoxelGrid<T>& input_grid,
-	int min_center_distance_vox, // = 2
-	std::optional<int> min_radius_vox, // = std::nullopt
-	std::optional<float> precision_target, // = std::nullopt
-	std::optional<int> max_spheres, // = std::nullopt
-	bool show_progress, // = true
-	std::optional<Eigen::MatrixX4f> sphere_table_in, // = std::nullopt
-	bool compute_physics //= false
+	const MultisphereConfig& config //= MultisphereConfig()
 );
 
 /**
  * @brief Multisphere reconstruction directly from a triangle mesh.
  * @param mesh Input FastMesh.
+ * @param config MultisphereConfig struct containing all configuration parameters:
  * @param div Voxel grid division (resolution).
  * @param padding Grid padding.
  * @param min_center_distance_vox Minimum center distance (voxels).
@@ -95,16 +92,7 @@ SpherePack multisphere_from_voxels(
  */
 SpherePack multisphere_from_mesh(
 	const FastMesh& mesh,
-	int div, // = 100
-	int padding, // = 2
-	int min_center_distance_vox, // = 4
-	std::optional<int> min_radius_vox, // = std::nullopt
-	std::optional<float> precision, // = std::nullopt
-	std::optional<int> max_spheres, // = std::nullopt
-	bool show_progress, // = true
-	bool confine_mesh, // = false
-	std::optional<Eigen::MatrixX4f> sphere_table, // = std::nullopt
-	bool compute_physics //= false
+	const MultisphereConfig& config //= MultisphereConfig()
 );
 
 /**

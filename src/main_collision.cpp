@@ -85,13 +85,16 @@ int main() {
                        edt_grid.data.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
 
         // 5. Reconstruction
+
+        MSS::MultisphereConfig config;
+        config.min_center_distance_vox = 2;
+        config.min_radius_vox = 2;
+        config.precision_target = 0.99f;
+        config.max_spheres = 100000;
+        config.show_progress = false;
         // -----------------
         SpherePack pack = multisphere_from_voxels(grid,
-                                        2,      // min_center_distance_vox
-                                        2,      // min_radius_vox
-                                        0.99,   // precision_target
-                                        100000, // max_spheres
-                                        false);
+                                        config);
 
         // 6. Export Results
         // -----------------

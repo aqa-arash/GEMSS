@@ -17,6 +17,11 @@
 #include <algorithm>
 #include <Eigen/Dense>
 #include <optional>
+#include <stdexcept>
+#include <string>
+#ifdef HAVE_OPENMP
+    #include <omp.h>
+#endif
 #include "multisphere_datatypes.hpp"
 #include "multisphere_io.hpp"
 #include "multisphere_voxel_processing.hpp"
@@ -188,6 +193,187 @@ inline Eigen::MatrixX4f filter_and_shift_peaks(
     }
     return result;
 }
+
+/**
+ * @brief Filters the sphere table to keep only the largest connected network.
+ * Uses an OpenMP-parallelized Dense Grid Spatial Hash with dynamic search extents.
+ * @param sphere_table Input sphere table (Nx4 matrix).
+ * @return Filtered sphere table containing only the primary connected component.
+ */
+inline Eigen::MatrixX4f filter_largest_sphere_network(const Eigen::MatrixX4f& sphere_table) {
+    int n = sphere_table.rows();
+    if (n <= 1) return sphere_table;
+
+    // Disjoint-Set (Union-Find)
+    struct UnionFind {
+        std::vector<int> parent;
+        std::vector<float> volume;
+
+        UnionFind(int size) : parent(size), volume(size, 0.0f) {
+            for (int i = 0; i < size; ++i) parent[i] = i;
+        }
+        int find(int i) {
+            int root = i;
+            while (root != parent[root]) root = parent[root];
+            int curr = i;
+            while (curr != root) {
+                int nxt = parent[curr];
+                parent[curr] = root;
+                curr = nxt;
+            }
+            return root;
+        }
+        void unite(int i, int j) {
+            int root_i = find(i);
+            int root_j = find(j);
+            if (root_i != root_j) {
+                parent[root_i] = root_j;
+                volume[root_j] += volume[root_i]; 
+            }
+        }
+    };
+
+    UnionFind uf(n);
+    float max_radius = 0.0f;
+    double sum_radius = 0.0;
+
+    // Parallelize Stats Collection
+    #pragma omp parallel for reduction(max:max_radius) reduction(+:sum_radius)
+    for (int i = 0; i < n; ++i) {
+        float r = sphere_table(i, 3);
+        uf.volume[i] = r * r * r; 
+        sum_radius += r;
+        if (r > max_radius) max_radius = r;
+    }
+
+    const float voxel_diag = 1.733f; 
+    float avg_radius = static_cast<float>(sum_radius / n);
+    float cell_size = std::max(1.0f, (2.0f * avg_radius) + voxel_diag);
+
+    Eigen::Vector3f min_b = sphere_table.leftCols<3>().colwise().minCoeff();
+    Eigen::Vector3f max_b = sphere_table.leftCols<3>().colwise().maxCoeff();
+    
+    int grid_nx = std::max(1, static_cast<int>(std::ceil((max_b.x() - min_b.x()) / cell_size)) + 1);
+    int grid_ny = std::max(1, static_cast<int>(std::ceil((max_b.y() - min_b.y()) / cell_size)) + 1);
+    int grid_nz = std::max(1, static_cast<int>(std::ceil((max_b.z() - min_b.z()) / cell_size)) + 1);
+    
+    long long total_cells_ll = static_cast<long long>(grid_nx) * grid_ny * grid_nz;
+    const long long MAX_SAFE_CELLS = 16777216; 
+    
+    if (total_cells_ll > MAX_SAFE_CELLS) {
+        throw std::runtime_error("[Dev-Multisphere] Spatial hash grid allocation exceeded safety threshold.");
+    }
+
+    int total_cells = static_cast<int>(total_cells_ll);
+    std::vector<int> head(total_cells, -1);
+    std::vector<int> next(n, -1);
+
+    auto get_cell_coords = [&](float x, float y, float z, int& cx, int& cy, int& cz) {
+        cx = std::max(0, std::min(grid_nx - 1, static_cast<int>((x - min_b.x()) / cell_size)));
+        cy = std::max(0, std::min(grid_ny - 1, static_cast<int>((y - min_b.y()) / cell_size)));
+        cz = std::max(0, std::min(grid_nz - 1, static_cast<int>((z - min_b.z()) / cell_size)));
+    };
+
+    auto get_1d_idx = [&](int cx, int cy, int cz) -> int {
+        return cx * (grid_ny * grid_nz) + cy * grid_nz + cz;
+    };
+
+    // Serial grid population (ultra-fast, lock-free continuous memory)
+    for (int i = 0; i < n; ++i) {
+        int cx, cy, cz;
+        get_cell_coords(sphere_table(i, 0), sphere_table(i, 1), sphere_table(i, 2), cx, cy, cz);
+        int cell_idx = get_1d_idx(cx, cy, cz);
+        next[i] = head[cell_idx];
+        head[cell_idx] = i;
+    }
+
+    // --- PHASE 1: PARALLEL SEARCH ---
+    std::vector<std::pair<int, int>> global_edges;
+
+    #pragma omp parallel
+    {
+        std::vector<std::pair<int, int>> local_edges;
+        
+        #pragma omp for schedule(dynamic, 64)
+        for (int i = 0; i < n; ++i) {
+            float xi = sphere_table(i, 0), yi = sphere_table(i, 1), zi = sphere_table(i, 2), ri = sphere_table(i, 3);
+            int cx, cy, cz;
+            get_cell_coords(xi, yi, zi, cx, cy, cz);
+            int search_extent = static_cast<int>(std::ceil((ri + max_radius + voxel_diag) / cell_size));
+
+            for (int dx = -search_extent; dx <= search_extent; ++dx) {
+                int nx = cx + dx;
+                if (nx < 0 || nx >= grid_nx) continue;
+                for (int dy = -search_extent; dy <= search_extent; ++dy) {
+                    int ny = cy + dy;
+                    if (ny < 0 || ny >= grid_ny) continue;
+                    for (int dz = -search_extent; dz <= search_extent; ++dz) {
+                        int nz = cz + dz;
+                        if (nz < 0 || nz >= grid_nz) continue;
+
+                        int neighbor_cell = get_1d_idx(nx, ny, nz);
+                        int j = head[neighbor_cell];
+                        
+                        while (j != -1) {
+                            if (i < j) { 
+                                float rj = sphere_table(j, 3);
+                                float dist_sq = (xi - sphere_table(j, 0)) * (xi - sphere_table(j, 0)) + 
+                                                (yi - sphere_table(j, 1)) * (yi - sphere_table(j, 1)) + 
+                                                (zi - sphere_table(j, 2)) * (zi - sphere_table(j, 2));
+                                float rad_sum = ri + rj + voxel_diag;
+                                
+                                if (dist_sq <= rad_sum * rad_sum) {
+                                    local_edges.emplace_back(i, j);
+                                }
+                            }
+                            j = next[j];
+                        }
+                    }
+                }
+            }
+        }
+        
+        #pragma omp critical
+        {
+            global_edges.insert(global_edges.end(), local_edges.begin(), local_edges.end());
+        }
+    }
+
+    // --- PHASE 2: SERIAL UNION ---
+    for (const auto& edge : global_edges) {
+        uf.unite(edge.first, edge.second);
+    }
+
+    // Find root with maximum accumulated volume proxy
+    int max_root = -1;
+    float max_vol = -1.0f;
+    for (int i = 0; i < n; ++i) {
+        int root = uf.find(i);
+        if (uf.volume[root] > max_vol) {
+            max_vol = uf.volume[root];
+            max_root = root;
+        }
+    }
+
+    // Extract largest network
+    std::vector<Eigen::Vector4f> kept_spheres;
+    kept_spheres.reserve(n);
+    for (int i = 0; i < n; ++i) {
+        if (uf.find(i) == max_root) {
+            kept_spheres.push_back(sphere_table.row(i));
+        }
+    }
+
+    Eigen::MatrixX4f result(kept_spheres.size(), 4);
+    
+    #pragma omp parallel for if(kept_spheres.size() > 1000)
+    for (int i = 0; i < static_cast<int>(kept_spheres.size()); ++i) {
+        result.row(i) = kept_spheres[i];
+    }
+
+    return result;
+}
+
 
 /**
  * @brief Appends peaks to the sphere table, respecting max_spheres limit.

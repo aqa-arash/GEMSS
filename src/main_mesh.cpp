@@ -39,23 +39,25 @@ int main() {
         // --- DEBUG SNIPPET ---
         // Uncomment to save mesh for debugging
         // save_mesh_to_stl(example_mesh, "debug_output.stl");
-        // std::cout << "[DEBUG] Check 'debug_output.stl' against 'example_mesh.stl' now." << std::endl;
+        // std::cout << "[DEBUG] Check 'debug_output.stl' against 'input_mesh.stl' now." << std::endl;
 
         // 2. Run the Reconstruction Algorithm
-        std::cout << "[2/3] Running reconstruction..." << std::endl;
+        MSS::MultisphereConfig config;
+        config.div = 400; // Voxel grid resolution
+        config.padding = 2; // Grid padding
+        config.min_center_distance_vox = 10; // Minimum center distance in voxels
+        config.min_radius_vox = 12; // Minimum radius in voxels
+        config.precision_target = 0.90f; // Target precision
+        config.max_spheres = 100; // Maximum number of spheres
+        config.show_progress = true; // Show progress output
+        config.confine_mesh = false; // Do not confine spheres to mesh boundary
+        config.initial_sphere_table = std::nullopt; // No initial sphere table
+        config.compute_physics = true; // Compute physical properties
+        config.prune_isolated_spheres = true; // Do not prune isolated spheres
 
         SpherePack single_sp = multisphere_from_mesh(
             example_mesh,
-            400,    // div
-            2,      // padding
-            10,     // min_center_distance_vox
-            12,      // min_radius_vox
-            0.90,   // precision_target
-            100, // max_spheres
-            true,   // show_progress
-            false,   // confine_mesh
-            std::nullopt, // sphere_table
-            true    // compute_physics
+            config
         );
 
         std::cout << "\nReconstruction Complete!" << std::endl;
@@ -66,7 +68,7 @@ int main() {
         std::cout << "Center of mass: " << single_sp.center_of_mass.transpose() << " units" << std::endl;
         std::cout << "Principal moments: " << single_sp.principal_moments.transpose() << " units^5" << std::endl;
         std::cout << "Principal axes:\n" << single_sp.principal_axes << std::endl;
-        
+
 
         // 3. Visualization or Export
 

@@ -129,14 +129,16 @@ int main() {
     sphere_table.row(1) = Eigen::Vector4f(center_point.x() + center_distance, center_point.y(), center_point.z(), radius1);
 
 
+    
     // 4. Reconstruction
-    SpherePack pack = multisphere_from_voxels(grid,
-                                    10, // min_center_distance_vox
-                                    20, // min_radius_vox
-                                    0.99, // precision_target
-                                    100000, // max_spheres
-                                    false,
-                                    sphere_table // initial sphere table
+    MSS::MultisphereConfig config3;
+    config3.min_center_distance_vox = 10;
+    config3.min_radius_vox = 20;
+    config3.precision_target = 0.99f;
+    config3.max_spheres = 100000;
+    config3.show_progress = false;
+    config3.initial_sphere_table = sphere_table; // Pass the initial sphere table to the config
+    SpherePack pack = multisphere_from_voxels(grid, config3
                                     );
 
 
@@ -243,14 +245,14 @@ int main() {
 
 
     // 4. Reconstruction
+    MSS::MultisphereConfig config2;
+    config2.min_center_distance_vox = center_distance + 2;
+    config2.min_radius_vox = 20;
+    config2.precision_target = 0.99f;
+    config2.max_spheres = 100000;
+    config2.show_progress = false;
     SpherePack pack2 = multisphere_from_voxels(grid,
-                                    center_distance + 2, // min_center_distance_vox
-                                    20, // min_radius_vox
-                                    0.99, // precision_target
-                                    100000, // max_spheres
-                                    false,
-                                    sphere_table // initial sphere table
-                                    );
+                                    config2);
 
 
 
@@ -362,13 +364,15 @@ int main() {
     
     
     // 4. Reconstruction
+        MSS::MultisphereConfig config;
+        config.min_center_distance_vox = 10;
+        config.min_radius_vox = 20;
+        config.precision_target = 0.99f;
+        config.max_spheres = 100000;
+        config.show_progress = false;
+
     SpherePack pack3 = multisphere_from_voxels(grid,
-                                    10, // min_center_distance_vox
-                                    20, // min_radius_vox
-                                    0.99, // precision_target
-                                    100000, // max_spheres
-                                    false
-                                    );
+                                    config);    
 
 
 

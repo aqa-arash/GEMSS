@@ -221,17 +221,26 @@ int main() {
     // ---------------------------------------------------
     std::cout << "[2/3] Running reconstruction..." << std::endl;
 
+    MSS::MultisphereConfig config;
+        config.min_center_distance_vox = 4;
+        config.min_radius_vox = 2;
+        config.precision_target = 0.95f;
+        config.max_spheres = 10;
+        config.show_progress = true;
+        config.confine_mesh = true;
+        config.compute_physics = true;
+
     // voxelgrid, min_center_distance_vox, min_radius_vox, precision_target, max_spheres, use_boost, initial_sphere_table
-    SpherePack single_sp = multisphere_from_voxels(single_sphere, 4,  2, 0.95, 10, true, std::nullopt, true);
-    SpherePack double_sp = multisphere_from_voxels(double_sphere, 4,  2, 0.95, 10, true, std::nullopt, true);
-    SpherePack rectangle_sp = multisphere_from_voxels(rectangle, 4,  2, 0.95, 10, true, std::nullopt, true);
-    SpherePack l_shape_sp = multisphere_from_voxels(l_shape, 3,  2, 0.95, 15, true, std::nullopt, true);
-    SpherePack torus_sp = multisphere_from_voxels(torus, 3,  2, 0.90, 30, true, std::nullopt, true);
-    SpherePack cluster_sp = multisphere_from_voxels(cluster, 2,  2, 0.95, 10, true, std::nullopt, true);
-    SpherePack sputnik_sp = multisphere_from_voxels(sputnik, 2,  2, 0.95, 10, true, std::nullopt, true);
-    SpherePack tumor_sp = multisphere_from_voxels(tumor, 2, 2, 0.95, 10, true, std::nullopt, true);
-    SpherePack cheese_sp = multisphere_from_voxels(cheese, 2, 2, 0.92, 1050, true, std::nullopt, true);
-    SpherePack ice_cream_boost = multisphere_from_voxels(ice_cream, 3, 4, 0.99, 10, true, std::nullopt, true);
+    SpherePack single_sp = multisphere_from_voxels(single_sphere, config);
+    SpherePack double_sp = multisphere_from_voxels(double_sphere, config);
+    SpherePack rectangle_sp = multisphere_from_voxels(rectangle, config);
+    SpherePack l_shape_sp = multisphere_from_voxels(l_shape, config);
+    SpherePack torus_sp = multisphere_from_voxels(torus, config);
+    SpherePack cluster_sp = multisphere_from_voxels(cluster, config);
+    SpherePack sputnik_sp = multisphere_from_voxels(sputnik, config);
+    SpherePack tumor_sp = multisphere_from_voxels(tumor, config);
+    SpherePack cheese_sp = multisphere_from_voxels(cheese, config);
+    SpherePack ice_cream_boost = multisphere_from_voxels(ice_cream, config);
 
     std::cout << "\nReconstruction Complete!" << std::endl;
     std::cout << "--Single Sphere : " << std::endl;

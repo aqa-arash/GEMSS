@@ -51,6 +51,10 @@ Release/
 *.bak
 *.orig
 *.rej
+*.internal
+*.make
+*.o.d
+*.exe
 
 # --- Python virtual environments ---
 .env/

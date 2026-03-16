@@ -108,27 +108,34 @@ int main() {
   // 1. Load Mesh
   FastMesh mesh = load_mesh_fast("example_mesh.stl");
 
-  // 2. Run Reconstruction
-  SpherePack sp = multisphere_from_mesh(
-    mesh,
-    150,    // div (resolution)
-    2,      // padding
-    8,      // min_radius_vox
-    0.99,   // precision_target
-    4,      // min_center_distance_vox
-    100,    // max_spheres
-    true,   // show_progress
-    false   // confine_mesh
-    // existing sphere pack can be passed as an additional argument
-  );
+  // 2. Set up configuration
+  MultisphereConfig config;
+  config.div = 150;                // Voxel grid resolution
+  config.padding = 2;              // Grid padding
+  config.min_radius_vox = 8;       // Minimum sphere radius in voxels
+  config.precision_target = 0.99;  // Target precision
+  config.min_center_distance_vox = 4; // Minimum center distance in voxels
+  config.max_spheres = 100;        // Maximum number of spheres
+  config.show_progress = true;     // Show progress output
+  config.confine_mesh = false;     // Do not confine spheres to mesh boundary
+  // config.initial_sphere_table = ...; // Optionally provide initial spheres
+  // config.compute_physics = true;    // Optionally compute physical properties
 
-  // 3. Export
+  // 3. Run Reconstruction
+  SpherePack sp = multisphere_from_mesh(mesh, config);
+
+  // 4. Export
   export_to_csv(sp, "results.csv");
   export_to_vtk(sp, "results.vtk");
-  save_mesh_to_stl(grid_to_mesh(sp), "results.stl");
+  // save_mesh_to_stl(grid_to_mesh(sp), "results.stl"); // If mesh export is needed
+
   return 0;
 }
 ```
+
+---
+
+**Note:** All configuration is now passed via the `MultisphereConfig` struct, making the API more flexible and maintainable. See `multisphere_config.hpp` for all available options.
 
 ---
 
