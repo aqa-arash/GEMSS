@@ -135,14 +135,24 @@ inline VoxelGrid<bool> load_voxels_from_npy(const std::string& path, double voxe
 template<typename T>
 inline void save_voxels_to_npy(const std::string& path, const VoxelGrid<T>& grid);
 
-// ... Add more user-facing API declarations as needed ...
+// . Mesh handling utilities .
 
 /** 
  * @brief Compute the minimum axis-aligned bounding box (AABB) dimension of a mesh.
+ * @details Used for converting from voxel units to physical units and for setting default parameters based on mesh scale.
  * @param mesh Input FastMesh.
  * @return Minimum AABB dimension (float).
  */
 inline float get_min_AABB(const FastMesh & mesh);
+
+/**
+ * @brief Filters the sphere table to keep only the largest connected network.
+ * @details Used to ensure a continuous representation of the multisphere union.
+ * Uses an OpenMP-parallelized Dense Grid Spatial Hash with dynamic search extents.
+ * @param sphere_table Input sphere table (Nx4 matrix).
+ * @return Filtered sphere table containing only the primary connected component.
+ */
+inline Eigen::MatrixX4f filter_largest_sphere_network(const Eigen::MatrixX4f& sphere_table);
 
 } // namespace MSS
 

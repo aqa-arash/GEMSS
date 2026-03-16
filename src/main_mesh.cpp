@@ -48,7 +48,7 @@ int main() {
         config.min_center_distance_vox = 10; // Minimum center distance in voxels
         config.min_radius_vox = 12; // Minimum radius in voxels
         config.precision_target = 0.90f; // Target precision
-        config.max_spheres = 100; // Maximum number of spheres
+        config.max_spheres = 10; // Maximum number of spheres
         config.show_progress = true; // Show progress output
         config.confine_mesh = false; // Do not confine spheres to mesh boundary
         config.initial_sphere_table = std::nullopt; // No initial sphere table
@@ -59,6 +59,31 @@ int main() {
             example_mesh,
             config
         );
+        
+        export_to_csv(single_sp, model_name + "_pruned.csv");
+        export_to_vtk(single_sp, model_name + "_pruned.vtk");
+
+
+        std::cout << "\nReconstruction Complete!" << std::endl;
+        std::cout << "--Single Sphere : \n Spheres found: " << single_sp.num_spheres() << std::endl;
+        std::cout << "Max radius: " << single_sp.max_radius() << " units" << std::endl;
+        std::cout << "Min radius: " << single_sp.min_radius() << " units" << std::endl;
+        std::cout << "Volume of union: " << single_sp.volume << " units^3" << std::endl;
+        std::cout << "Center of mass: " << single_sp.center_of_mass.transpose() << " units" << std::endl;
+        std::cout << "Principal moments: " << single_sp.principal_moments.transpose() << " units^5" << std::endl;
+        std::cout << "Principal axes:\n" << single_sp.principal_axes << std::endl;
+
+
+
+        config.prune_isolated_spheres = false; // Disable pruning for double sphere test
+        single_sp = multisphere_from_mesh(
+            example_mesh,
+            config
+        );
+
+        export_to_csv(single_sp, model_name + ".csv");
+        export_to_vtk(single_sp, model_name + ".vtk");
+
 
         std::cout << "\nReconstruction Complete!" << std::endl;
         std::cout << "--Single Sphere : \n Spheres found: " << single_sp.num_spheres() << std::endl;
