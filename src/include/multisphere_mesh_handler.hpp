@@ -64,9 +64,9 @@ float get_min_AABB(const FastMesh & mesh)  {
  * @param mesh Input FastMesh.
  * @param div Voxel grid division (resolution).
  * @param padding Grid padding.
- * @return VoxelGrid<bool> representing mesh occupancy.
+ * @return VoxelGrid<uint8_t> representing mesh occupancy.
  */
-inline VoxelGrid<bool> mesh_to_binary_grid(const FastMesh& mesh, int div, int padding = 2) {
+inline VoxelGrid<uint8_t> mesh_to_binary_grid(const FastMesh& mesh, int div, int padding = 2) {
     if (mesh.vertices.rows() == 0) throw std::invalid_argument("Mesh is empty.");
     // 1. Setup Grid & Bounds
     Eigen::Vector3f min_v = mesh.vertices.colwise().minCoeff().transpose();
@@ -85,7 +85,7 @@ inline VoxelGrid<bool> mesh_to_binary_grid(const FastMesh& mesh, int div, int pa
         std::cout << "[Voxelizer] Grid: " << nx << "x" << ny << "x" << nz 
                 << " | Method: Generalized Winding Number (Robust)" << std::endl;
     #endif
-    VoxelGrid<bool> grid(nx, ny, nz, voxel_size, origin);
+    VoxelGrid<uint8_t> grid(nx, ny, nz, voxel_size, origin);
 
     // 2. Prepare Query Points (Voxel Centers)
     Eigen::MatrixXf queries(nx * ny * nz, 3);

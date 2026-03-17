@@ -166,7 +166,7 @@ SpherePack multisphere_from_voxels(
 
     SpherePack result(centers_phys, radii_phys);
     result.precision = final_precision;
-    if (config.compute_physics) {
+    if (config.compute_physics == 1) {
         // Compute physical properties of the multisphere union
         compute_multisphere_physics(result, recon_mask);
     }
@@ -201,7 +201,7 @@ SpherePack multisphere_from_mesh(
     }
 
     // 1. Convert to VoxelGrid
-    VoxelGrid<bool> voxel_grid = mesh_to_binary_grid(mesh, config.div, config.padding);
+    VoxelGrid<uint8_t> voxel_grid = mesh_to_binary_grid(mesh, config.div, config.padding);
     #ifdef MULTISPHERE_DEBUG    
         std::cout << "Voxel grid created from mesh: " << voxel_grid.nx() << "x" << voxel_grid.ny() << "x" << voxel_grid.nz() << std::endl;
     #endif
@@ -212,6 +212,7 @@ SpherePack multisphere_from_mesh(
         Eigen::MatrixX3f centers_vox(config.initial_sphere_table.value().rows(), 3);
         Eigen::VectorXf radii_vox(config.initial_sphere_table.value().rows());
 
+        // convert initial sphere table from physical units to voxel units for reconstruction
         for (int i = 0; i < config.initial_sphere_table.value().rows(); ++i) {
             Eigen::Vector3f pos_phys = config.initial_sphere_table.value().block<1, 3>(i, 0).transpose();
             centers_vox.row(i) = ((pos_phys - voxel_grid.origin).array() / voxel_grid.voxel_size) - 0.5f;
@@ -242,6 +243,10 @@ SpherePack multisphere_from_mesh(
         );
     }
 
+    if (config.compute_physics == 2) {
+        // Compute physical properties based on original mesh (if available)
+        compute_multisphere_physics(sp, voxel_grid);
+    }
     // 4. Boundary Adjustment (Optional)
     if (config.confine_mesh) {
         constrain_radii_to_sdf(sp, mesh);

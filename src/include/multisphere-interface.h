@@ -52,7 +52,7 @@ inline void save_mesh_to_stl(const FastMesh& mesh, const std::string& output_pat
  * @param padding Grid padding.
  * @return VoxelGrid<bool> representing mesh occupancy.
  */
-inline VoxelGrid<bool> mesh_to_binary_grid(const FastMesh& mesh, int div, int padding /* = 2 */);
+inline VoxelGrid<uint8_t> mesh_to_binary_grid(const FastMesh& mesh, int div, int padding /* = 2 */);
 
 /**
  * @brief Multisphere reconstruction from a voxel grid.
@@ -65,7 +65,7 @@ inline VoxelGrid<bool> mesh_to_binary_grid(const FastMesh& mesh, int div, int pa
  * @param max_spheres Maximum number of spheres.
  * @param show_progress Show progress output.
  * @param sphere_table_in Optional initial sphere table.
- * @param compute_physics Whether to compute physical properties of the multisphere union.
+ * @param compute_physics Whether to compute physical properties of the multisphere union. 0 = false, 1 = compute based on reconstruction
  * @return SpherePack reconstruction result.
  */
 template <typename T>
@@ -87,7 +87,7 @@ SpherePack multisphere_from_voxels(
  * @param show_progress Show progress output.
  * @param confine_mesh Confine spheres to mesh boundary.
  * @param sphere_table Optional initial sphere table.
- * @param compute_physics Whether to compute physical properties of the multisphere union.
+ * @param compute_physics Whether to compute physical properties of the multisphere union. 0 = false, 1 = compute based on reconstruction, 2 = compute based on original mesh (if available)
  * @return SpherePack reconstruction result.
  */
 SpherePack multisphere_from_mesh(
@@ -119,12 +119,12 @@ template <typename T>
 inline void export_voxel_grid_to_vtk(const VoxelGrid<T>& grid, const std::string& path);
 
 /**
- * @brief Load a VoxelGrid<bool> from a .npy file.
+ * @brief Load a VoxelGrid<uint8_t> from a .npy file.
  * @param path Path to .npy file.
  * @param voxel_size Physical voxel size.
- * @return VoxelGrid<bool> loaded from file.
+ * @return VoxelGrid<uint8_t> loaded from file.
  */
-inline VoxelGrid<bool> load_voxels_from_npy(const std::string& path, double voxel_size);
+inline VoxelGrid<uint8_t> load_voxels_from_npy(const std::string& path, double voxel_size);
 
 /**
  * @brief Save a VoxelGrid to a .npy file.

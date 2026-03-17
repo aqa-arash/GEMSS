@@ -31,101 +31,91 @@ namespace MSS {
  * @param final_mask The binary voxel grid representing the multisphere union.
  */
 inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_t>& final_mask) {
-    // 1st order moments (for CoM)
+    long long N_vox = 0;
+    
+    // Moments accumulated in LOCAL physical space (origin subtracted)
     double sum_x = 0.0, sum_y = 0.0, sum_z = 0.0;
-    // 2nd order moments (for Inertia)
     double sum_xx = 0.0, sum_yy = 0.0, sum_zz = 0.0;
     double sum_xy = 0.0, sum_xz = 0.0, sum_yz = 0.0;
-    size_t occupied_count = 0;
-    
-    size_t ny = final_mask.ny();
-    size_t nz = final_mask.nz();
-    size_t total_voxels = final_mask.data.size();
-    float vs = final_mask.voxel_size;
 
-    // =========================================================================
-    // Single Pass: Accumulate Geometric Moments (Relative to Grid Origin)
-    // =========================================================================
-    #pragma omp parallel for reduction(+:sum_x, sum_y, sum_z, sum_xx, sum_yy, sum_zz, sum_xy, sum_xz, sum_yz, occupied_count)
-    for (size_t i = 0; i < total_voxels; ++i) {
-        if (final_mask.data[i] > 0) {
-            size_t x = i / (ny * nz);
-            size_t rem = i % (ny * nz);
-            size_t y = rem / nz;
-            size_t z = rem % nz;
+    int nx = final_mask.nx();
+    int ny = final_mask.ny();
+    int nz = final_mask.nz();
+    double vs = final_mask.voxel_size;
 
-            // Use local coordinates (relative to grid origin) inside the loop 
-            // to prevent catastrophic floating-point cancellation on large grids.
-            double lx = (x + 0.5) * vs;
-            double ly = (y + 0.5) * vs;
-            double lz = (z + 0.5) * vs;
+    #pragma omp parallel for collapse(3) reduction(+:N_vox, sum_x, sum_y, sum_z, sum_xx, sum_yy, sum_zz, sum_xy, sum_xz, sum_yz)
+    for (int x = 0; x < nx; ++x) {
+        for (int y = 0; y < ny; ++y) {
+            for (int z = 0; z < nz; ++z) {
+                if (final_mask(x, y, z) > 0) {
+                    N_vox++;
+                    
+                    // Local physical coordinates
+                    double cx = x * vs;
+                    double cy = y * vs;
+                    double cz = z * vs;
 
-            // Accumulate 1st order (CoM)
-            sum_x += lx;
-            sum_y += ly;
-            sum_z += lz;
-
-            // Accumulate 2nd order diagonals
-            sum_xx += ly * ly + lz * lz;
-            sum_yy += lx * lx + lz * lz;
-            sum_zz += lx * lx + ly * ly;
-            
-            // Accumulate 2nd order off-diagonals (products of inertia)
-            sum_xy += lx * ly;
-            sum_xz += lx * lz;
-            sum_yz += ly * lz;
-
-            occupied_count++;
+                    sum_x += cx;
+                    sum_y += cy;
+                    sum_z += cz;
+                    
+                    sum_xx += cx * cx;
+                    sum_yy += cy * cy;
+                    sum_zz += cz * cz;
+                    
+                    sum_xy += cx * cy;
+                    sum_xz += cx * cz;
+                    sum_yz += cy * cz;
+                }
+            }
         }
     }
 
-    if (occupied_count == 0) return;
+    if (N_vox == 0) {
+        pack.volume = 0.0;
+        pack.center_of_mass.setZero();
+        pack.inertia_tensor.setZero();
+        pack.principal_moments.setZero();
+        pack.principal_axes.setIdentity();
+        return;
+    }
 
-    // =========================================================================
-    // Post-Loop: Shift to Absolute Coordinates and Apply Parallel Axis Theorem
-    // =========================================================================
-    
     double voxel_vol = vs * vs * vs;
-    pack.volume = occupied_count * voxel_vol;
+    pack.volume = N_vox * voxel_vol;
 
-    // Compute Local CoM
-    double cx_local = sum_x / occupied_count;
-    double cy_local = sum_y / occupied_count;
-    double cz_local = sum_z / occupied_count;
+    // 1. Calculate LOCAL Center of Mass
+    double cx_local = sum_x / N_vox;
+    double cy_local = sum_y / N_vox;
+    double cz_local = sum_z / N_vox;
 
-    // Set Absolute CoM
-    pack.center_of_mass = final_mask.origin + Eigen::Vector3f(cx_local, cy_local, cz_local);
+    // 2. Shift Local CoM to GLOBAL CoM
+    pack.center_of_mass << cx_local + final_mask.origin.x(),
+                           cy_local + final_mask.origin.y(),
+                           cz_local + final_mask.origin.z();
 
-    // Shift Inertia Tensor to CoM using Parallel Axis Theorem
-    // I_com = I_origin - Mass * (Distance_to_CoM)^2
-    double Ixx = (sum_xx * voxel_vol) - (pack.volume * (cy_local * cy_local + cz_local * cz_local));
-    double Iyy = (sum_yy * voxel_vol) - (pack.volume * (cx_local * cx_local + cz_local * cz_local));
-    double Izz = (sum_zz * voxel_vol) - (pack.volume * (cx_local * cx_local + cy_local * cy_local));
+    // 3. Parallel Axis Theorem (Calculated entirely in stable local space)
+    double Ixx = (sum_yy * voxel_vol) + (sum_zz * voxel_vol) - pack.volume * (cy_local * cy_local + cz_local * cz_local);
+    double Iyy = (sum_xx * voxel_vol) + (sum_zz * voxel_vol) - pack.volume * (cx_local * cx_local + cz_local * cz_local);
+    double Izz = (sum_xx * voxel_vol) + (sum_yy * voxel_vol) - pack.volume * (cx_local * cx_local + cy_local * cy_local);
 
-    // For products of inertia, the shift is + Mass * cx * cy
     double Ixy = -(sum_xy * voxel_vol) + (pack.volume * cx_local * cy_local);
     double Ixz = -(sum_xz * voxel_vol) + (pack.volume * cx_local * cz_local);
     double Iyz = -(sum_yz * voxel_vol) + (pack.volume * cy_local * cz_local);
 
-    // Add self-inertia of the voxels (uniform cubes)
     double self_inertia_total = pack.volume * (vs * vs) / 6.0;
-    Ixx += self_inertia_total;
-    Iyy += self_inertia_total;
-    Izz += self_inertia_total;
 
-    pack.inertia_tensor << Ixx, Ixy, Ixz,
-                           Ixy, Iyy, Iyz,
-                           Ixz, Iyz, Izz;
+    pack.inertia_tensor << Ixx + self_inertia_total, Ixy, Ixz,
+                           Ixy, Iyy + self_inertia_total, Iyz,
+                           Ixz, Iyz, Izz + self_inertia_total;
 
-    // =========================================================================
-    // Principal Axes via Eigendecomposition
-    // =========================================================================
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix3f> eigensolver(pack.inertia_tensor);
     if (eigensolver.info() == Eigen::Success) {
         pack.principal_moments = eigensolver.eigenvalues();
         pack.principal_axes = eigensolver.eigenvectors();
     } else {
-        std::cerr << "[WARNING] Eigendecomposition for inertia tensor failed." << std::endl;
+        std::cerr << "[Warning] Eigendecomposition failed." << std::endl;
+        pack.principal_moments.setZero();
+        pack.principal_axes.setIdentity();
     }
 }
 

@@ -52,10 +52,30 @@ int main() {
         config.show_progress = true; // Show progress output
         config.confine_mesh = false; // Do not confine spheres to mesh boundary
         config.initial_sphere_table = std::nullopt; // No initial sphere table
-        config.compute_physics = true; // Compute physical properties
+        config.compute_physics = 1; // Compute physical properties
         config.prune_isolated_spheres = true; // Do not prune isolated spheres
 
         SpherePack single_sp = multisphere_from_mesh(
+            example_mesh,
+            config
+        );
+        
+        export_to_csv(single_sp, model_name + "_pruned.csv");
+        export_to_vtk(single_sp, model_name + "_pruned.vtk");
+
+
+        std::cout << "\nReconstruction Complete!" << std::endl;
+        std::cout << "--Single Sphere : \n Spheres found: " << single_sp.num_spheres() << std::endl;
+        std::cout << "Max radius: " << single_sp.max_radius() << " units" << std::endl;
+        std::cout << "Min radius: " << single_sp.min_radius() << " units" << std::endl;
+        std::cout << "Volume of union: " << single_sp.volume << " units^3" << std::endl;
+        std::cout << "Center of mass: " << single_sp.center_of_mass.transpose() << " units" << std::endl;
+        std::cout << "Principal moments: " << single_sp.principal_moments.transpose() << " units^5" << std::endl;
+        std::cout << "Principal axes:\n" << single_sp.principal_axes << std::endl;
+
+
+        config.compute_physics = 2; // Compute physical properties based on original mesh (if available)
+        single_sp = multisphere_from_mesh(
             example_mesh,
             config
         );
@@ -95,9 +115,8 @@ int main() {
         std::cout << "Principal axes:\n" << single_sp.principal_axes << std::endl;
 
 
-        // 3. Visualization or Export
 
-        std::cout << "[3/3] VTK not enabled. Skipping visualization." << std::endl;
+        // 3. Visualization or Export
         export_to_csv(single_sp, model_name + ".csv");
         export_to_vtk(single_sp, model_name + ".vtk");
         std::cout << "To see the result, export to CSV or recompile with VTK enabled." << std::endl;

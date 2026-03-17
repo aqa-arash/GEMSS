@@ -209,6 +209,24 @@ struct VertexKeyHash {
     }
 };
 
+// Helper struct for the Sort-and-Sweep algorithm
+struct RawVertex {
+    float x, y, z;
+    uint32_t original_id;
+
+    // Strict weak ordering for std::sort
+    bool operator<(const RawVertex& other) const {
+        if (x != other.x) return x < other.x;
+        if (y != other.y) return y < other.y;
+        return z < other.z;
+    }
+
+    // Exact equality check
+    bool operator==(const RawVertex& other) const {
+        return x == other.x && y == other.y && z == other.z;
+    }
+};
+
 } // namespace MSS
 
 #endif // MULTISPHERE_DATATYPES_HPP

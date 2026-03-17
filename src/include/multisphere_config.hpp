@@ -24,7 +24,7 @@ struct MultisphereConfig {
     std::optional<int> max_spheres = std::nullopt;        ///< Maximum allowed spheres
 
     // --- Utilities & Prior State ---
-    bool compute_physics = false; ///< Compute volume, CoM, and inertia tensor
+    int compute_physics = 0; ///< Compute volume, CoM, and inertia tensor 0 = false, 1 = Compute based on reconstruction, 2 = compute based on original mesh (if available)
     bool prune_isolated_spheres = false; ///< Remove spheres that are not touching the biggest network of spheres
     bool show_progress = true;    ///< Print console progress
     std::optional<Eigen::MatrixX4f> initial_sphere_table = std::nullopt; ///< Prior solver state

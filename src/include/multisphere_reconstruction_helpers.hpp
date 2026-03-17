@@ -75,7 +75,7 @@ inline Eigen::MatrixX4f peak_local_max_3d(
             for (int y = 0; y < ny; ++y) {
                 for (int z = 0; z < nz; ++z) {
                     float val = field(x, y, z);
-                    float radius = original_distance(x, y, z)+0.5f; // Add 0.5 to convert from distance to radius in voxel units
+                    float radius = original_distance(x, y, z)+0.87f; // Add 0.87 to convert extend to radius (half diagonal of voxel)
 
                     if (radius < min_radius_vox) continue;
                     if (val <= 1.0f) continue;
@@ -477,7 +477,7 @@ inline Eigen::MatrixX4f compute_sphere_table(
                 iter = 1;
                 float percision = compute_voxel_precision(voxel_grid, recon_mask);
                 if (show_progress) {
-                    std::cout << "weight " << weight_factor << " Total spheres " << sphere_table.rows() << " Precision: " << percision << std::endl;
+                    std::cout << " -Weight = " << weight_factor << " -Total spheres = " << sphere_table.rows() << " -Precision = " << percision << std::endl;
                     }
 
                 if (precision_target.has_value() && compute_voxel_precision(voxel_grid, recon_mask) >= *precision_target) {
