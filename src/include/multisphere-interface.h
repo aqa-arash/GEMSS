@@ -1,3 +1,5 @@
+#ifndef MULTISPHERE_INTERFACE_H
+#define MULTISPHERE_INTERFACE_H
 
 /**
  * @file multisphere-interface.h
@@ -12,7 +14,6 @@
  */
 
 
-#pragma once
 
 
 #include "multisphere_datatypes.hpp"
@@ -118,23 +119,6 @@ inline void export_to_vtk(const SpherePack& sp, const std::string& path);
 template <typename T>
 inline void export_voxel_grid_to_vtk(const VoxelGrid<T>& grid, const std::string& path);
 
-/**
- * @brief Load a VoxelGrid<uint8_t> from a .npy file.
- * @param path Path to .npy file.
- * @param voxel_size Physical voxel size.
- * @return VoxelGrid<uint8_t> loaded from file.
- */
-inline VoxelGrid<uint8_t> load_voxels_from_npy(const std::string& path, double voxel_size);
-
-/**
- * @brief Save a VoxelGrid to a .npy file.
- * @tparam T VoxelGrid data type.
- * @param path Output .npy file path.
- * @param grid VoxelGrid to save.
- */
-template<typename T>
-inline void save_voxels_to_npy(const std::string& path, const VoxelGrid<T>& grid);
-
 // . Mesh handling utilities .
 
 /** 
@@ -158,3 +142,4 @@ inline Eigen::MatrixX4f filter_largest_sphere_network(const Eigen::MatrixX4f& sp
 
 
 
+#endif // MULTISPHERE_INTERFACE_H

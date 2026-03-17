@@ -21,10 +21,6 @@
 
 using namespace MSS;
 
-// Third-party headers
-#include "thirdparty/cnpy.h" 
-
-
 namespace fs = std::filesystem;
 
 /**
@@ -107,11 +103,7 @@ int main() {
     // 3. Distance Transform & Export
     edt_grid = grid.distance_transform(); 
 
-    cnpy::npy_save(bool_dir + "/bool_step_"  + ".npy", 
-                    bool_buffer.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
 
-    cnpy::npy_save(edt_dir + "/edt_step_" + ".npy", 
-                    edt_grid.data.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
 
     Eigen::MatrixX4f sphere_table = Eigen::MatrixX4f(2, 4); // Empty table for initial reconstruction
     
@@ -207,11 +199,6 @@ int main() {
     // 3. Distance Transform & Export
     edt_grid = grid.distance_transform(); 
 
-    cnpy::npy_save(bool_dir + "/bool_step_"  + ".npy", 
-                    bool_buffer.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
-
-    cnpy::npy_save(edt_dir + "/edt_step_" + ".npy", 
-                    edt_grid.data.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
 
     sphere_table = Eigen::MatrixX4f(2, 4); // Empty table for initial reconstruction
     // Add two large spheres close to the center to kickstart the reconstruction
@@ -354,12 +341,6 @@ int main() {
     edt_grid = grid.distance_transform(); 
 
     
-
-    cnpy::npy_save(bool_dir + "/bool_step_"  + ".npy", 
-                    bool_buffer.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
-
-    cnpy::npy_save(edt_dir + "/edt_step_" + ".npy", 
-                    edt_grid.data.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
 
     
     

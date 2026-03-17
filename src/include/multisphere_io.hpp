@@ -15,9 +15,9 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <filesystem>
+#include <system_error>
 #include <Eigen/Dense>
-#include "thirdparty/cnpy.h"
-
 #include "multisphere_datatypes.hpp"
 
 namespace MSS {
@@ -44,8 +44,8 @@ inline FastMesh load_mesh_fast(const std::string& path) {
     // O(1) file size validation
     std::error_code ec;
     uintmax_t physical_size = std::filesystem::file_size(path, ec);
-    if (!ec && physical_size < 84 + (static_cast<uintmax_t>(num_triangles) * 50)) {
-        throw std::runtime_error("Malformed Binary STL: File too small for claimed triangle count.");
+    if (ec || physical_size < 84 + (static_cast<uintmax_t>(num_triangles) * 50)) {
+        throw std::runtime_error("Malformed Binary STL: Cannot read file or file too small for claimed triangle count.");
     }
 
     if (num_triangles == 0) return FastMesh();
@@ -220,44 +220,6 @@ inline void export_voxel_grid_to_vtk(const VoxelGrid<T>& grid, const std::string
     file.close();
 }
 
-/**
- * @brief Loads a VoxelGrid<bool> from a .npy file.
- * @param path Path to .npy file.
- * @param voxel_size Physical voxel size.
- * @return VoxelGrid<uint8_t> loaded from file.
- */
-inline VoxelGrid<uint8_t> load_voxels_from_npy(const std::string& path, double voxel_size) {
-    cnpy::NpyArray arr = cnpy::npy_load(path);
-    if (arr.shape.size() != 3) throw std::runtime_error("Array must be 3D");
-
-    VoxelGrid<uint8_t> grid(arr.shape[0], arr.shape[1], arr.shape[2], voxel_size);
-    
-    // Treat numpy boolean data natively as 1-byte uint8_t
-    if (arr.word_size == 1) {
-        uint8_t* loaded_data = arr.data<uint8_t>();
-        std::copy(loaded_data, loaded_data + grid.data.size(), grid.data.begin());
-    } else {
-        throw std::runtime_error("Unsupported NPY word size for binary grid loading.");
-    }
-    
-    return grid;
-}
-
-/**
- * @brief Saves a VoxelGrid to a .npy file.
- * @tparam T VoxelGrid data type.
- * @param path Output .npy file path.
- * @param grid VoxelGrid to save.
- */
-template<typename T>
-inline void save_voxels_to_npy(const std::string& path, const VoxelGrid<T>& grid) {
-    std::vector<size_t> shape = {
-        static_cast<size_t>(grid.shape[0]), 
-        static_cast<size_t>(grid.shape[1]), 
-        static_cast<size_t>(grid.shape[2])
-    };
-    cnpy::npy_save(path, grid.data.data(), shape, "w");
-}
 
 /**
  * @brief Saves a FastMesh to a binary STL file.

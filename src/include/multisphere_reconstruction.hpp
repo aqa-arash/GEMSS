@@ -170,8 +170,11 @@ SpherePack multisphere_from_voxels(
         // Compute physical properties of the multisphere union
         compute_multisphere_physics(result, recon_mask);
     }
+    if (config.compute_physics == 2) {
+        // Compute physical properties based on original mesh (if available)
+        compute_multisphere_physics(result, voxel_grid);
+    }
     
-
     return result;
 }
 
@@ -243,10 +246,6 @@ SpherePack multisphere_from_mesh(
         );
     }
 
-    if (config.compute_physics == 2) {
-        // Compute physical properties based on original mesh (if available)
-        compute_multisphere_physics(sp, voxel_grid);
-    }
     // 4. Boundary Adjustment (Optional)
     if (config.confine_mesh) {
         constrain_radii_to_sdf(sp, mesh);

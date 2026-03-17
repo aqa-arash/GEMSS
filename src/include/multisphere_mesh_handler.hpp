@@ -30,11 +30,22 @@
 #include "multisphere_datatypes.hpp"
 
 // Suppress specific warnings for libigl
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wfree-nonheap-object"
+#if defined(__GNUC__) || defined(__clang__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wfree-nonheap-object"
+#elif defined(_MSC_VER)
+    #pragma warning(push)
+    // TODO: Add specific MSVC warning disable codes here if libigl triggers them
+#endif
+
 #include <igl/signed_distance.h>
 #include <igl/fast_winding_number.h>
-#pragma GCC diagnostic pop
+
+#if defined(__GNUC__) || defined(__clang__)
+    #pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+    #pragma warning(pop)
+#endif
 
 // Namespace MSS for all library code
 namespace MSS {

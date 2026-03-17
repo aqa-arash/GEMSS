@@ -75,7 +75,10 @@ inline Eigen::MatrixX4f peak_local_max_3d(
             for (int y = 0; y < ny; ++y) {
                 for (int z = 0; z < nz; ++z) {
                     float val = field(x, y, z);
-                    float radius = original_distance(x, y, z)+0.87f; // Add 0.87 to convert extend to radius (half diagonal of voxel)
+                    // mathematically exact half-diagonal of a unit cube: sqrt(3) / 2
+                    constexpr float VOXEL_HALF_DIAG = 0.86602540378f; 
+                    float radius = original_distance(x, y, z) + VOXEL_HALF_DIAG;
+                    
 
                     if (radius < min_radius_vox) continue;
                     if (val <= 1.0f) continue;

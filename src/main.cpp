@@ -214,8 +214,8 @@ int main() {
                 if (in_cone || in_sphere)
                     ice_cream(x, y, z) = true;
             }
-    save_voxels_to_npy("ice_cream_cone.npy", ice_cream);
-    save_mesh_to_stl(grid_to_mesh(ice_cream), "ice_cream_cone.stl");
+
+            save_mesh_to_stl(grid_to_mesh(ice_cream), "ice_cream_cone.stl");
 
     // 2. Run multisphere reconstruction for each geometry
     // ---------------------------------------------------

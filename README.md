@@ -60,11 +60,9 @@ The C++ implementation is designed for high-performance integration. It is a **h
 
 ### Dependencies
 
-* **System**: CMake (≥3.10), C++17 compiler, OpenMP (optional but recommended).
-* **Bundled (in `include/thirdparty/`)**: `libigl` (math/geometry), `cnpy` (numpy IO), `edt` (distance transform).
-* **Not bundled:**  
-  - [Eigen](https://eigen.tuxfamily.org/) (required, must be installed separately)
-  - [zlib](https://zlib.net/) (required for `cnpy`, must be available on your system)
+* **System**: CMake (≥3.15), C++17 compiler, OpenMP (optional but recommended).
+* **Bundled (in `include/thirdparty/`)**: `libigl` (math/geometry), `edt` (distance transform).
+* **Not bundled:** - [Eigen](https://eigen.tuxfamily.org/) (required, must be installed separately)
 
 ### Building the C++ Examples
 
@@ -89,7 +87,6 @@ You can use `multisphere-cpp` as a header-only library in your own project:
 - **All public API is in the `MSS` namespace.** You must either prefix all types and functions with `MSS::`, or add `using namespace MSS;` in your `.cpp` files.
 - **Default argument values** for API functions are shown as comments in the interface header for clarity.
 - **Note:** The `Eigen` library is required but **not provided** in the `include/` directory. You must have Eigen installed and available in your include path.
-- **Note:** The `cnpy` library requires `zlib` to be available on your system.
 - It is recommended to use the provided CMake configuration, or ensure your own CMake setup finds and links all required dependencies (`Eigen`, `zlib`, etc.) when including `multisphere-cpp` headers.
 - No need to build the example executables unless you want to run the demos.
 
@@ -142,7 +139,6 @@ int main() {
 ## Input/Output
 
 - **Mesh loading:** STL files via `load_mesh_fast`
-- **Voxel grid loading:** NumPy `.npy` files via `load_voxels_from_npy`
 - **Export:** CSV, VTK, STL (no runtime visualization; use external tools for viewing)
 
 ### Visualization
@@ -162,10 +158,10 @@ See the LICENSE file for full details.
 
 | Package      | License    | Usage         |
 | ------------ | ---------- | ------------ |
-| **Eigen**    | MPL2       | C++ Math     |
-| **libigl**   | MPL2       | C++ Voxelization |
-| **cnpy**     | MIT        | C++ IO       |
-| **edt**      | MIT        | C++ Distance Transform |
+| **Eigen** | MPL2       | C++ Math     |
+| **libigl** | MPL2       | C++ Voxelization |
+| **edt** | MIT        | C++ Distance Transform |
+
 
 ## Author
 

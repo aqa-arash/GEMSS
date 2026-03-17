@@ -21,9 +21,6 @@
 
 using namespace MSS;
 
-// Third-party headers
-#include "thirdparty/cnpy.h"
-
 namespace fs = std::filesystem;
 
 /**
@@ -78,11 +75,6 @@ int main() {
         // -----------------------------
         VoxelGrid<float> edt_grid = grid.distance_transform();
 
-        cnpy::npy_save(bool_dir + "/bool_step_" + std::to_string(step_count) + ".npy",
-                       bool_buffer.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
-
-        cnpy::npy_save(edt_dir + "/edt_step_" + std::to_string(step_count) + ".npy",
-                       edt_grid.data.data(), {(size_t)nx, (size_t)ny, (size_t)nz}, "w");
 
         // 5. Reconstruction
 
