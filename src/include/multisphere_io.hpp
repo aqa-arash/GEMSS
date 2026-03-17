@@ -44,6 +44,13 @@ inline FastMesh load_mesh_fast(const std::string& path) {
     uint32_t num_triangles;
     file.read(reinterpret_cast<char*>(&num_triangles), 4);
 
+    // ensure correct memory expectation 
+    std::error_code ec;
+    uintmax_t physical_size = std::filesystem::file_size(path, ec);
+    if (!ec && physical_size < 84 + (static_cast<uintmax_t>(num_triangles) * 50)) {
+        throw std::runtime_error("Malformed Binary STL: File too small for claimed triangle count.");
+    }
+
     std::vector<Eigen::Vector3f> unique_vertices;
     std::vector<Eigen::Vector3i> face_indices;
     

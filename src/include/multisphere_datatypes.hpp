@@ -17,6 +17,7 @@
 #include <iostream>
 #include <vector>
 #include <thread>
+#include <filesystem>
 #ifdef HAVE_OPENMP
     #include <omp.h>
 #endif
@@ -111,7 +112,7 @@ public:
             if (num_threads == 0) num_threads = 1;
         #endif
 
-        float* dists = nullptr;
+        std::unique_ptr<float[]> dists = nullptr;
 
         if (binary_mode) {
             // Binary mode: Flatten all labels > 0 into a uniform mask of 1s
@@ -121,14 +122,14 @@ public:
                 temp_mask[i] = (this->data[i] > static_cast<T>(0)) ? 1 : 0;
             }
             
-            dists = edt::binary_edt<uint8_t>(
+            dists.reset(edt::binary_edt<uint8_t>(
                 temp_mask.data(), 
                 static_cast<int>(shape[2]), 
                 static_cast<int>(shape[1]), 
                 static_cast<int>(shape[0]), 
                 1.0f, 1.0f, 1.0f, 
                 true, num_threads, nullptr
-            );
+            ));
         } else {
             // skip for now, as we currently only use binary mode. Future: implement multi-label EDT if needed.
             throw std::runtime_error("Non-binary EDT mode not implemented yet.");
@@ -139,7 +140,6 @@ public:
             result.data[i] = dists[i];
         }
 
-        delete[] dists; // Corrected memory deallocation
         return result;
     }
     
