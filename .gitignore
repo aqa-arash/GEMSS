@@ -112,7 +112,7 @@ examples/*.bin
 examples/*.so
 examples/*.dll
 examples/*.vtk
-examples/*.cvs
+examples/*.csv
 
 # --- Ignore test and coverage outputs ---
 .pytest_cache/
