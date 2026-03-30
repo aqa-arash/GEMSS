@@ -49,7 +49,8 @@ struct SpherePack {
 
     // Global Physical Properties of the Multisphere Union
     float precision = 0.0f;           ///< Final precision achieved
-    float volume = 0.0f;
+    float volume = 0.0f;             ///< Volume of the union of spheres
+    float bounding_radius= 0.0f;  // Bounding sphere radius of the union
     Eigen::Vector3f center_of_mass = Eigen::Vector3f::Zero();
     Eigen::Matrix3f inertia_tensor = Eigen::Matrix3f::Zero();
     Eigen::Matrix3f principal_axes = Eigen::Matrix3f::Identity();
