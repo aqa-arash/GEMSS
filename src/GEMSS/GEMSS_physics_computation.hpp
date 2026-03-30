@@ -125,7 +125,7 @@ inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_
         float radius = pack.radii(i);
         
         // Distance from global CoM to the sphere center + sphere radius
-        double dist = (center - pack.center_of_mass).norm() + radius;
+        double dist = (center - pack.center_of_mass).norm() + radius + (vs * std::sqrt(3.0f) / 2.0f); // Add half voxel diagonal for safety
         if (dist > max_r) max_r = dist;
     }
     pack.bounding_radius = static_cast<float>(max_r);
