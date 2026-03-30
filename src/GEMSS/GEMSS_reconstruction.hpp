@@ -47,7 +47,7 @@ namespace GEMSS {
  * @param compute_physics Whether to compute physical properties of the multisphere union.
  * @return SpherePack reconstruction result.
  */
-SpherePack multisphere_from_voxels(
+inline SpherePack multisphere_from_voxels(
     const VoxelGrid<uint8_t>& input_grid,
     const MultisphereConfig& config = MultisphereConfig()
 ) {
@@ -176,7 +176,7 @@ SpherePack multisphere_from_voxels(
  * @param compute_physics Whether to compute physical properties of the multisphere union.
  * @return SpherePack reconstruction result.
  */
-SpherePack multisphere_from_mesh(
+inline SpherePack multisphere_from_mesh(
     const FastMesh& mesh,
     const MultisphereConfig& config = MultisphereConfig()
 ) {
