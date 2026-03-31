@@ -4,7 +4,7 @@
 
 /**
  * @file multisphere_datatypes.hpp
- * @brief Core data structures for multisphere-cpp library (namespace MSS).
+ * @brief Core data structures for multisphere-cpp library (namespace GEMSS).
  *
  * Defines FastMesh, SpherePack, VoxelGrid, and utility types for mesh and voxel operations.
  * Provides distance transform and sphere kernel generation.
