@@ -30,7 +30,7 @@ int main() {
     std::cout << "--- Multisphere Reconstruction Test ---" << std::endl;
 
     // List of mesh files to process
-    std::vector<std::string> models = { "example_mesh.stl" };
+    std::vector<std::string> models = { "ice_cream_cone.stl" };
 
     for (const auto& model_name : models) {
         // 1. Load mesh from file
@@ -47,7 +47,7 @@ int main() {
         config.padding = 2; // Grid padding
         config.search_window = 10; // Search window size
         config.min_center_distance_rel = 0.5f; // Minimum center distance relative to radius
-        config.min_radius_vox = 12; // Minimum radius in voxels
+        config.min_radius_vox = 20; // Minimum radius in voxels
         config.precision_target = 0.99f; // Target precision
         config.max_spheres = 10000; // Maximum number of spheres
         config.show_progress = true; // Show progress output

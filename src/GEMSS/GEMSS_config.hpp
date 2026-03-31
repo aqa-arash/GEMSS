@@ -23,8 +23,6 @@ struct MultisphereConfig {
     int min_radius_vox = 2; ///< Minimum sphere radius in voxels default is 2 voxels, which allows for capturing small features while avoiding excessive numbers of tiny spheres due to discretization error. Adjust based on the expected feature size in your input data and desired level of detail.
     float precision_target = 1.0f; ///< Target voxel overlap precision [0, 1]. please note 1 is impossible to reach due to discretization, set to 0.99 or lower for practical purposes. Adjust based on the desired balance between reconstruction quality and runtime.
     int max_spheres = 0;        ///< Maximum allowed spheres in the reconstruction (0 for unlimited)
-    
-
 
     // --- Utilities & Prior State ---
     int compute_physics = 2; ///< Compute volume, CoM, and inertia tensor 0 = false, 1 = Compute based on reconstruction, 2 = compute based on original mesh (if available)
