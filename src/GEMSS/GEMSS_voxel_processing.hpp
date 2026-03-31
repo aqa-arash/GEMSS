@@ -4,7 +4,7 @@
 
 /**
  * @file multisphere_voxel_processing.hpp
- * @brief Voxel grid processing utilities for multisphere-cpp.
+ * @brief Voxel grid processing utilities for GEMSS.
  *
  * Provides kernel application, peak shifting, precision computation, sphere rendering, and mesh conversion.
  *
