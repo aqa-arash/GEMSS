@@ -153,9 +153,9 @@ inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_
     for (size_t i = 0; i < pack.num_spheres(); ++i) {
         Eigen::Vector3f center = pack.centers.row(i);
         float radius = pack.radii(i);
-        
-        // Distance from global CoM to the sphere center + sphere radius
-        double dist = (center - pack.center_of_mass).norm() + radius + vs; // Add half voxel diagonal for safety
+
+        // Ensure pack.center_of_mass is cast to Vector3f for type consistency
+        double dist = (center - pack.center_of_mass.cast<float>()).norm() + radius + std::sqrt(3) * vs; // Add a diagonal voxel for safety
         if (dist > max_r) max_r = dist;
     }
     pack.bounding_radius = static_cast<float>(max_r);
