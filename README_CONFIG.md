@@ -41,8 +41,10 @@ struct MultisphereConfig {
 * **confine_mesh**: Confine spheres strictly to the mesh boundary's Signed Distance Field (SDF).
 
 ### Peak Detection & Filtering
-* **min_center_distance_rel**: Minimum center distance relative to the radius (e.g., `0.5` means centers must be at least half a radius apart).
-* **search_window**: The number of cells looked at from each direction to assess whether the current cell is a local maximum. The default is `2` to avoid voxelization error. It can be set to higher values to smooth the surface of the geometry. Empirically, a value equal to 4% of the voxelization resolution (`div`) has shown to perform well for complex geometries like sand particle scans.
+  * **min_center_distance_rel**: Minimum center distance relative to the square root of the local radius (acting as coefficient $k$). For example, a value of `0.5` means adjacent centers must be at least $0.5 \times \sqrt{R}$ apart. 
+  * **Purpose**: Scales the spacing to maintain a uniform artificial roughness across the shape, preventing over-resolution on flat surfaces while preserving high-curvature details.
+  * **Warning (Detachment Limit)**: If the minimum allowable radius in the domain falls below $k^2 / 4$, the required spacing exceeds the diameter of those small spheres, causing them to detach with no physical overlap.
+  * **Warning (Choking Limit)**: If the minimum allowable radius falls below $k^2$, the required spacing exceeds the radius itself ($d > R$). In converging geometries (e.g., conical tips), the oversized exclusion zone chokes the domain, and new spheres may fail to generate in these regions.* **search_window**: The number of cells looked at from each direction to assess whether the current cell is a local maximum. The default is `2` to avoid voxelization error. It can be set to higher values to smooth the surface of the geometry. Empirically, a value equal to 4% of the voxelization resolution (`div`) has shown to perform well for complex geometries like sand particle scans.
 * **radius_offset_vox**: Correction factor added to the radius during peak detection to better fit the original shape. Default is approximately half a voxel (`0.5f`), which empirically improves reconstruction quality. Adjust with caution.
 
 ### Convergence & Limits
