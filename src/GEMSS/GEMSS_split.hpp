@@ -281,7 +281,7 @@ split_and_compute_surface_sp(const SpherePack& sp, const Eigen::Vector3f& normal
     
     Eigen::MatrixX4f spheres(sp.centers.rows(), 4);
     spheres.leftCols(3) = (sp.centers.rowwise() - origin.transpose()).array() / voxel_size - 0.5f;
-    spheres.col(3) = sp.radii.array() / voxel_size;
+    spheres.col(3) = sp.radii.array() / voxel_size - parent_representation_offset;
     spheres_to_grid(grid, spheres, static_cast<uint8_t>(1));
 
     // --- Step 2: Fused Labeling and Surface Area Projection ---

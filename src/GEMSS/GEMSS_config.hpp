@@ -35,7 +35,8 @@ struct MultisphereConfig {
 
     // --- Fragmentation setting 
     bool conserve_mass = true;
-    float fracture_plane_offset = 0.5f; // offset coefficient for fracture plane during splitting ( x * voxel size, applied to the plane normal direction, larger values creates a gap between fragments to ensure clean splitting - model sawed off at the plane without residual voxels bridging the fragments, but causes mass loss)
+    float parent_representation_offset = 0.87f; // offset for the voxelization of the parent from spheres -> ensures no new spheres place engulfing the old ones (shrink the target by 1 diagonal voxel)
+    float fracture_plane_offset = 0.15f; // offset coefficient for fracture plane during splitting ( x * voxel size, applied to the plane normal direction, larger values creates a gap between fragments to ensure clean splitting - model sawed off at the plane without residual voxels bridging the fragments, but causes mass loss)
     
 };
 
