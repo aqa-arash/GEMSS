@@ -93,7 +93,7 @@ inline void compute_planar_physics(SpherePack& pack, const VoxelGrid<uint8_t>& g
  */
 inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_t>& voxelGrid) {
     
-    if (voxelGrid.nz() == 1) {            // planar input -> 2D physics
+    if (voxelGrid.nz() == 1 || pack.is_2d) {            // planar input -> 2D physics
         compute_planar_physics(pack, voxelGrid);
         return;
     }
