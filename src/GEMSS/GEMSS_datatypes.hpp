@@ -85,11 +85,24 @@ public:
         data.resize(nx * ny * nz, static_cast<T>(0));
     }
 
-    inline typename std::vector<T>::reference operator()(size_t x, size_t y, size_t z) {
+    /**
+     * @brief Named constructor for a 2D grid (single z-slice, nz == 1).
+     * A plain 2-arg ctor would be ambiguous with the 3D ctor, so use this.
+     */
+    static VoxelGrid<T> make_2d(size_t nx, size_t ny,
+                                float v_size = 1.0f,
+                                Eigen::Vector3f orig = Eigen::Vector3f::Zero()) {
+        return VoxelGrid<T>(nx, ny, 1, v_size, orig);
+    }
+
+    /// @brief True if this grid is a single z-slice (treated as 2D).
+    bool is_2d() const { return shape[2] == 1; }
+
+    inline typename std::vector<T>::reference operator()(size_t x, size_t y, size_t z = 0) {
         return data[x * (shape[1] * shape[2]) + y * shape[2] + z];
     }
 
-    inline typename std::vector<T>::const_reference operator()(size_t x, size_t y, size_t z) const {
+    inline typename std::vector<T>::const_reference operator()(size_t x, size_t y, size_t z = 0) const {
         return data[x * (shape[1] * shape[2]) + y * shape[2] + z];
     }
 
