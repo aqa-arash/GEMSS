@@ -46,6 +46,8 @@ struct SpherePack {
     Eigen::MatrixX3f centers; ///< Sphere centers (Nx3)
     Eigen::VectorXf radii;    ///< Sphere radii (N)
 
+    bool is_2d = false;   // planar pack: physics is area/Izz, split collapses out-of-plane axis
+
     // Global Physical Properties of the Multisphere Union
     float precision = 0.0f;           ///< Final precision achieved
     float density = 1.0f;             ///< Material density for mass properties
