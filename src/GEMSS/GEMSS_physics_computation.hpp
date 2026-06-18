@@ -25,12 +25,79 @@
 namespace GEMSS {
 
 /**
+ * @brief 2D physics for a planar (single-slice) mask: area-based mass + polar moment Izz.
+ * Izz is stored in inertia_tensor(2,2) and principal_moments.z() so the shared
+ * mass-conservation scaling in the split routines keeps working unchanged.
+ */
+inline void compute_planar_physics(SpherePack& pack, const VoxelGrid<uint8_t>& grid) {
+    long long N = 0;
+    double sum_x = 0.0, sum_y = 0.0, sum_xx = 0.0, sum_yy = 0.0;
+    const int nx = static_cast<int>(grid.nx());
+    const int ny = static_cast<int>(grid.ny());
+    const double vs = grid.voxel_size;
+
+    #pragma omp parallel for collapse(2) reduction(+:N, sum_x, sum_y, sum_xx, sum_yy)
+    for (int x = 0; x < nx; ++x) {
+        for (int y = 0; y < ny; ++y) {
+            if (grid(x, y, 0) > 0) {
+                const double cx = x * vs, cy = y * vs;
+                ++N;
+                sum_x += cx;  sum_y += cy;
+                sum_xx += cx * cx;  sum_yy += cy * cy;
+            }
+        }
+    }
+
+    if (N == 0) {
+        pack.mass = 0.0f; pack.center_of_mass.setZero();
+        pack.inertia_tensor.setZero(); pack.principal_moments.setZero();
+        pack.principal_axes.setIdentity(); pack.bounding_radius = 0.0f;
+        return;
+    }
+
+    const double rho = pack.density;
+    const double area_elem = vs * vs;
+    pack.mass = static_cast<float>(N * area_elem * rho);
+
+    const double cx_l = sum_x / N, cy_l = sum_y / N;
+    pack.center_of_mass << static_cast<float>(cx_l + grid.origin.x()),
+                           static_cast<float>(cy_l + grid.origin.y()),
+                           grid.origin.z();
+
+    double Izz = rho * area_elem * (sum_xx + sum_yy)
+               - static_cast<double>(pack.mass) * (cx_l * cx_l + cy_l * cy_l);
+    Izz += static_cast<double>(pack.mass) * (vs * vs) / 6.0;   // square-voxel self moment
+
+    pack.inertia_tensor.setZero();
+    pack.inertia_tensor(2, 2) = static_cast<float>(Izz);
+    pack.principal_axes.setIdentity();
+    pack.principal_moments.setZero();
+    pack.principal_moments.z() = static_cast<float>(Izz);
+
+    double max_r = 0.0;
+    const Eigen::Vector2f com2 = pack.center_of_mass.head<2>();
+    for (size_t i = 0; i < pack.num_spheres(); ++i) {
+        const Eigen::Vector3f c3 = pack.centers.row(i);
+        const double dist = (c3.head<2>() - com2).norm() + pack.radii(i) + std::sqrt(2.0) * vs;
+        if (dist > max_r) max_r = dist;
+    }
+    pack.bounding_radius = static_cast<float>(max_r);
+}
+
+
+/**
  * @brief Computes volume, Center of Mass (CoM), and inertia tensor from the final voxel mask in a single pass.
  * Updates the physical properties directly inside the provided SpherePack.
  * @param pack The SpherePack object to update.
  * @param voxelGrid The binary voxel grid.
  */
 inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_t>& voxelGrid) {
+    
+    if (voxelGrid.nz() == 1) {            // planar input -> 2D physics
+        compute_planar_physics(pack, voxelGrid);
+        return;
+    }
+    
     long long N_vox = 0;
     
     // Moments accumulated in LOCAL physical space (origin subtracted)
