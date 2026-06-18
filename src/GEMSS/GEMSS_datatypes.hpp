@@ -112,6 +112,27 @@ public:
             if (num_threads == 0) num_threads = 1;
         #endif
 
+        // --- 2D fast path: a single-slice grid must use the 2D EDT. ---
+        // The 3D EDT with black_border on a 1-voxel-thick slab would clamp every
+        // foreground voxel to distance 1 from the empty z-faces, destroying the field.
+        if (shape[2] == 1) {
+            std::vector<uint8_t> mask(this->data.size());
+            for (size_t i = 0; i < this->data.size(); ++i)
+                mask[i] = (this->data[i] > static_cast<T>(0)) ? 1 : 0;
+
+            // Layout idx = x*ny + y  =>  y is contiguous. EDT wants x fastest,
+            // so EDT sx = ny (fast axis), EDT sy = nx.
+            std::unique_ptr<float[]> dists2d(edt::binary_edt<uint8_t>(
+                mask.data(),
+                static_cast<int>(shape[1]),   // sx (fast)
+                static_cast<int>(shape[0]),   // sy
+                1.0f, 1.0f,
+                /*black_border=*/true, num_threads, nullptr));
+
+            for (size_t i = 0; i < this->data.size(); ++i) result.data[i] = dists2d[i];
+            return result;
+        }
+        
         std::unique_ptr<float[]> dists = nullptr;
 
         if (binary_mode) {
