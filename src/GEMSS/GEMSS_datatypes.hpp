@@ -47,6 +47,8 @@ struct SpherePack {
     Eigen::VectorXf radii;    ///< Sphere radii (N)
     bool is_2d = false; 
 
+    bool is_2d = false;   // planar pack: physics is area/Izz, split collapses out-of-plane axis
+
     // Global Physical Properties of the Multisphere Union
     float precision = 0.0f;           ///< Final precision achieved
     float density = 1.0f;             ///< Material density for mass properties
@@ -86,11 +88,24 @@ public:
         data.resize(nx * ny * nz, static_cast<T>(0));
     }
 
-    inline typename std::vector<T>::reference operator()(size_t x, size_t y, size_t z) {
+    /**
+     * @brief Named constructor for a 2D grid (single z-slice, nz == 1).
+     * A plain 2-arg ctor would be ambiguous with the 3D ctor, so use this.
+     */
+    static VoxelGrid<T> make_2d(size_t nx, size_t ny,
+                                float v_size = 1.0f,
+                                Eigen::Vector3f orig = Eigen::Vector3f::Zero()) {
+        return VoxelGrid<T>(nx, ny, 1, v_size, orig);
+    }
+
+    /// @brief True if this grid is a single z-slice (treated as 2D).
+    bool is_2d() const { return shape[2] == 1; }
+
+    inline typename std::vector<T>::reference operator()(size_t x, size_t y, size_t z = 0) {
         return data[x * (shape[1] * shape[2]) + y * shape[2] + z];
     }
 
-    inline typename std::vector<T>::const_reference operator()(size_t x, size_t y, size_t z) const {
+    inline typename std::vector<T>::const_reference operator()(size_t x, size_t y, size_t z = 0) const {
         return data[x * (shape[1] * shape[2]) + y * shape[2] + z];
     }
 
@@ -113,6 +128,27 @@ public:
             if (num_threads == 0) num_threads = 1;
         #endif
 
+        // --- 2D fast path: a single-slice grid must use the 2D EDT. ---
+        // The 3D EDT with black_border on a 1-voxel-thick slab would clamp every
+        // foreground voxel to distance 1 from the empty z-faces, destroying the field.
+        if (shape[2] == 1) {
+            std::vector<uint8_t> mask(this->data.size());
+            for (size_t i = 0; i < this->data.size(); ++i)
+                mask[i] = (this->data[i] > static_cast<T>(0)) ? 1 : 0;
+
+            // Layout idx = x*ny + y  =>  y is contiguous. EDT wants x fastest,
+            // so EDT sx = ny (fast axis), EDT sy = nx.
+            std::unique_ptr<float[]> dists2d(edt::binary_edt<uint8_t>(
+                mask.data(),
+                static_cast<int>(shape[1]),   // sx (fast)
+                static_cast<int>(shape[0]),   // sy
+                1.0f, 1.0f,
+                /*black_border=*/true, num_threads, nullptr));
+
+            for (size_t i = 0; i < this->data.size(); ++i) result.data[i] = dists2d[i];
+            return result;
+        }
+        
         std::unique_ptr<float[]> dists = nullptr;
 
         if (binary_mode) {

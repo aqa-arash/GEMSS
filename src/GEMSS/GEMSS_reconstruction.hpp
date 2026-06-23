@@ -163,6 +163,7 @@ inline SpherePack multisphere_from_voxels(
     #endif
 
     SpherePack result(centers_phys, radii_phys);
+    result.is_2d = config.is_2d || (input_grid.nz() == 1);
     result.density = config.density; // Set density for physics computations
     result.precision = final_precision;
     if (config.compute_physics == 1) {
@@ -173,6 +174,7 @@ inline SpherePack multisphere_from_voxels(
         // Compute physical properties based on original mesh (if available)
         compute_multisphere_physics(result, input_grid);
     }
+    
     
     return result;
 }

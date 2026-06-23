@@ -13,6 +13,7 @@
 #include <Eigen/Dense>
 #include <cmath>
 #include <algorithm>
+#include <sys/stat.h>
 #include "GEMSS/GEMSS-interface.h"
 
 using namespace GEMSS;
@@ -22,17 +23,25 @@ int main() {
     std::cout << "--- Multisphere Cube Test ---" << std::endl;
 
     std::string meshname = "Hamburg_Sand_particle_00058";
-    std::string meshdir = "samples/" + meshname +".stl";
+    std::string meshdir = "samples/" + meshname + ".stl";
 
     STLMesh mesh = load_mesh(meshdir);
-    
+
+    // Create output directory if it doesn't exist
+    std::string outdir = "fixedK";
+#ifdef _WIN32
+    _mkdir(outdir.c_str());
+#else
+    mkdir(outdir.c_str(), 0777);
+#endif
+
     // 2. Run multisphere reconstruction
     std::cout << "[2/3] Running reconstruction..." << std::endl;
     GEMSS::MultisphereConfig config;
     config.div = 300;
-    config.min_center_distance_rel = 10.0f;
     config.search_window = 4;
     config.min_radius_vox = 4;
+    config.min_center_distance_rel = std::sqrt(config.min_radius_vox); // default relative center distance based on min radius
     config.precision_target = 0.9999f;
     config.max_spheres = 2000;
     config.radius_offset_vox = 0.0f;
@@ -44,20 +53,15 @@ int main() {
     SpherePack final_cube_sp;
 
     // parameter study for cube reconstruction
-    #pragma omp parallel for schedule(dynamic) 
-    for (int i = 0; i < 12; ++i) {  
+    #pragma omp parallel for schedule(dynamic)
+    for (int i = 0; i < 12; ++i) {
         int max_spheres_list[12] = {  1,          2,          4,      8,      16,     32,     64,          128,      256,      512,    1024,      2058};
-        float md_list[12] =        {  11,       10.15,     10.15,    9.75,      8.75,     7.75,     6.15 ,     5.15,     4.15,    3.15,     2.15,      1.15 };
         int max_spheres = max_spheres_list[i];
-        float md = md_list[i];
-        std::string case_name = std::to_string(max_spheres)+ meshname +".vtk";
+        // Zero-pad to 4 digits for sorting
+        char case_name[256];
+        snprintf(case_name, sizeof(case_name), "%s/%04d_%s.vtk", outdir.c_str(), max_spheres, meshname.c_str());
         GEMSS::MultisphereConfig local_config = config; // thread-local copy
         local_config.max_spheres = max_spheres;
-        local_config.min_center_distance_rel = md;
-        #pragma omp critical
-        {
-        std::cout << "\n--- Limit: " << max_spheres << ", k: " << md << " ---" << std::endl;
-        }
         SpherePack cube_sp = multisphere_from_mesh(mesh, local_config);
         if (max_spheres == 2560) {
             #pragma omp critical
@@ -70,7 +74,6 @@ int main() {
             std::cout << "\n--- Limit: " << max_spheres << " ---" << std::endl;
             print_sphere_pack_info(cube_sp);
             export_to_vtk(cube_sp, case_name);
-
         }
     }
 

@@ -29,6 +29,7 @@ struct MultisphereConfig {
     // --- Utilities & prior state ---
     bool is_2d = false;
     int compute_physics = 2;     // compute physics properties
+    bool is_2d = false;   // treat reconstruction as planar (single z-slice + 2D physics)
     float density = 1.0f;        // material density for mass properties 
     bool prune_isolated_spheres = false; // remove isolated spheres
     bool show_progress = true;   // print progress
