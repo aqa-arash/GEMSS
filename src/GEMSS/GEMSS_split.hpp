@@ -120,6 +120,7 @@ inline std::vector<SpherePack> multisphere_from_splitted_voxelGrid(
         
         // 2. Setup the initial table for this fragment
         MultisphereConfig region_config = config;
+        region_config.is_2d = (labeled_grid.nz() == 1);
         if (label - 1 < static_cast<int>(sphere_lists.size()) && sphere_lists[label - 1].centers.rows() > 0) {
             Eigen::MatrixX4f table(sphere_lists[label - 1].centers.rows(), 4);
             // Convert physical coordinates to voxel coordinates for the solver
@@ -161,8 +162,13 @@ split_sp(const SpherePack& sp, const Eigen::Vector3f& normal, const Eigen::Vecto
     if (voxel_size <= 0) voxel_size = 1.0f;
     Eigen::Vector3f origin = min_corner.array() - config.padding * voxel_size;
     Eigen::Array3i dims = ((max_corner - min_corner).array() / voxel_size + 2 * config.padding).cast<int>();
-    
-    VoxelGrid<uint8_t> grid(dims[0], dims[1], dims[2], voxel_size, origin);
+
+    if (sp.is_2d) {
+        origin.z() = sp.centers(0, 2) - 0.5f * voxel_size;
+        dims[2] = 1;
+    }
+    VoxelGrid<uint8_t> grid(std::max(1, dims[0]), std::max(1, dims[1]),
+                            std::max(1, dims[2]), voxel_size, origin);
     
     Eigen::MatrixX4f spheres(sp.centers.rows(), 4);
     spheres.leftCols(3) = (sp.centers.rowwise() - origin.transpose()).array() / voxel_size - 0.5f;
@@ -276,8 +282,13 @@ split_and_compute_surface_sp(const SpherePack& sp, const Eigen::Vector3f& normal
     if (voxel_size <= 0) voxel_size = 1.0f;
     Eigen::Vector3f origin = min_corner.array() - local_config.padding * voxel_size;
     Eigen::Array3i dims = ((max_corner - min_corner).array() / voxel_size + 2 * local_config.padding).cast<int>();
-    
-    VoxelGrid<uint8_t> grid(dims[0], dims[1], dims[2], voxel_size, origin);
+
+    if (sp.is_2d) {
+        origin.z() = sp.centers(0, 2) - 0.5f * voxel_size;
+        dims[2] = 1;
+    }
+    VoxelGrid<uint8_t> grid(std::max(1, dims[0]), std::max(1, dims[1]),
+                            std::max(1, dims[2]), voxel_size, origin);
     
     Eigen::MatrixX4f spheres(sp.centers.rows(), 4);
     spheres.leftCols(3) = (sp.centers.rowwise() - origin.transpose()).array() / voxel_size - 0.5f;

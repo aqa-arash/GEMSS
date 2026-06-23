@@ -81,14 +81,14 @@ int main(int argc, char** argv) {
     // Define tuning ranges for the study
     std::vector<float> parent_offsets = {0.0f, 0.25f, 0.5f, 0.75f, 1.0f};
     std::vector<float> plane_offsets = {0.0f, 0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
-    std::vector<float> divs = {50, 100,150,200,250};
+    std::vector<float> divs = {200,250};
 
 for (int div :divs){
     GEMSS::MultisphereConfig base_config;
     base_config.div = div;
     base_config.compute_physics = 1;
     base_config.conserve_mass = false; // CRITICAL: Disabled to measure natural mass loss
-    base_config.show_progress = true;
+    base_config.show_progress = false;
 
     std::string output_csv = std::to_string(div) + "tuning_results.csv";
 
@@ -105,7 +105,8 @@ for (int div :divs){
         STLMesh mesh = load_mesh(entry.path().string());
         if (mesh.is_empty()) continue;
         SpherePack parent_sp = multisphere_from_mesh(mesh, base_config);
-
+        
+        std::cout<< "Starting " << div << " on " << filename <<std::endl; 
 
         if (parent_sp.mass <= 0.0f) {
             std::cout<< filename << " sp failed!"<<std::endl;

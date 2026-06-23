@@ -45,6 +45,7 @@ struct STLMesh {
 struct SpherePack {
     Eigen::MatrixX3f centers; ///< Sphere centers (Nx3)
     Eigen::VectorXf radii;    ///< Sphere radii (N)
+    bool is_2d = false; 
 
     // Global Physical Properties of the Multisphere Union
     float precision = 0.0f;           ///< Final precision achieved

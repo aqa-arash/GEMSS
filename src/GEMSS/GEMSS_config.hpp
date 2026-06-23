@@ -27,6 +27,7 @@ struct MultisphereConfig {
     int persistence = 2;         // solver persistence
 
     // --- Utilities & prior state ---
+    bool is_2d = false;
     int compute_physics = 2;     // compute physics properties
     float density = 1.0f;        // material density for mass properties 
     bool prune_isolated_spheres = false; // remove isolated spheres
