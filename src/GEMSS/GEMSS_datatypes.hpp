@@ -45,7 +45,6 @@ struct STLMesh {
 struct SpherePack {
     Eigen::MatrixX3f centers; ///< Sphere centers (Nx3)
     Eigen::VectorXf radii;    ///< Sphere radii (N)
-    bool is_2d = false; 
 
     bool is_2d = false;   // planar pack: physics is area/Izz, split collapses out-of-plane axis
 
