@@ -52,8 +52,6 @@ inline SpherePack multisphere_from_voxels(
     const MultisphereConfig& config = MultisphereConfig()
 ) {
 
-
-    
     VoxelGrid<float> original_distance(input_grid.nx(), input_grid.ny(), input_grid.nz(), input_grid.voxel_size, input_grid.origin);
     Eigen::MatrixX4f sphere_table(0, 4);
 

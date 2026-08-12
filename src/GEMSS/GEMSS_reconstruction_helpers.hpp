@@ -411,11 +411,16 @@ inline Eigen::MatrixX4f compute_sphere_table(
 ) {
     Eigen::MatrixX4f sphere_table = config.initial_sphere_table;
 
+    float diff = static_cast<float>(config.search_window) - 1.0f;
+    /* Based on off axis angle for 1 neighbor (stencil size 3) up to 12 is safe. */
+    float stable_weight = 2.0f * diff * diff + 4.0f;
+
     // Solver State
     int max_iter = config.persistence, iter = 1, prev_count = 0;
     float weight_factor = 1.0f;
     bool peaks_found = false;
 
+    VoxelGrid<float> running_field = original_distance;
     // =========================================================================
     // Pre-Loop Initialization
     // =========================================================================
@@ -428,9 +433,17 @@ inline Eigen::MatrixX4f compute_sphere_table(
         peaks_found = true;
     }
 
+    if (peaks_found) {
+        running_field.multiply(sphere_table.rows()* stable_weight +1);
+        for (int i=0; i< sphere_table.rows(); ++i ){
+            running_field.sphere_distance_kernel(sphere_table(i,0),sphere_table(i,1),sphere_table(i,2),sphere_table(i,3), stable_weight);
+        }
+    }
+    
     // Temporary memory buffers scoped only to the solver
     VoxelGrid<float> residual(voxel_grid.nx(), voxel_grid.ny(), voxel_grid.nz(), voxel_grid.voxel_size, voxel_grid.origin);
     VoxelGrid<float> summed_field(voxel_grid.nx(), voxel_grid.ny(), voxel_grid.nz(), voxel_grid.voxel_size, voxel_grid.origin);
+    
 
     while (iter <= max_iter) {
         if (config.max_spheres > 0  && sphere_table.rows() >= config.max_spheres) {
@@ -452,19 +465,27 @@ inline Eigen::MatrixX4f compute_sphere_table(
                     break;
                 }
                 spheres_to_grid<uint8_t>(overlap_mask, sphere_table.block(prev_count, 0, sphere_table.rows() - prev_count, 4), 1, config.min_center_distance_rel);
-                residual = residual_distance_field(original_distance, recon_mask.distance_transform());
+                //residual = residual_distance_field(original_distance, recon_mask.distance_transform());
+                int added_spheres = sphere_table.rows() - prev_count;
+                running_field.add(original_distance, added_spheres * stable_weight);
+                for (int i = prev_count; i < sphere_table.rows();++i){
+                    running_field.sphere_distance_kernel(sphere_table(i,0),sphere_table(i,1),sphere_table(i,2),sphere_table(i,3), stable_weight);
+                }
+                
             }
-
             #pragma omp parallel for
             for (size_t i = 0; i < summed_field.data.size(); ++i) {
-                summed_field.data[i] = original_distance.data[i] + residual.data[i] * weight_factor;
+                //summed_field.data[i] = original_distance.data[i] + residual.data[i] * weight_factor;
+
+            // consider adding a running weight increase as per the old method 
             }
         } else {
             summed_field.data = original_distance.data;
         }
 
         // B. Peak Detection & Filtering
-        Eigen::MatrixX4f peaks = peak_local_max_3d(summed_field, original_distance, overlap_mask, config);
+        //Eigen::MatrixX4f peaks = peak_local_max_3d(summed_field, original_distance, overlap_mask, config);
+        Eigen::MatrixX4f peaks = peak_local_max_3d(running_field, original_distance, overlap_mask, config);
         peaks = filter_and_shift_peaks(peaks, sphere_table, summed_field,config);
 
         // C. Iteration Flow Control

@@ -269,6 +269,7 @@ void spheres_to_grid(VoxelGrid<T>& grid,
     }
 }
 
+
 /**
  * @brief Converts a voxel grid into a blocky mesh by generating faces for exposed voxels.
  * @tparam T Voxel grid data type.

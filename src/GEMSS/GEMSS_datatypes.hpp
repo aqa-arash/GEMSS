@@ -263,6 +263,72 @@ public:
             }
         }
     }
+
+
+    /**
+     * @brief Fill grid with a sphere kernel.
+     * @param cx Center x
+     * @param cy Center y
+     * @param cz Center z
+     * @param radius Sphere radius
+     * @param fill_value Value to fill inside sphere
+     */
+    void sphere_distance_kernel(float cx, float cy, float cz, float radius, T fill_value = static_cast<T>(1)) {
+        if (radius <= 0) return;
+
+        float r_sq = radius * radius;
+        int n_x = static_cast<int>(this->nx());
+        int n_y = static_cast<int>(this->ny());
+        int n_z = static_cast<int>(this->nz());
+
+        int min_x = std::max(0, static_cast<int>(std::floor(cx - radius)));
+        int max_x = std::min(n_x - 1, static_cast<int>(std::ceil(cx + radius)));
+        int min_y = std::max(0, static_cast<int>(std::floor(cy - radius)));
+        int max_y = std::min(n_y - 1, static_cast<int>(std::ceil(cy + radius)));
+        int min_z = std::max(0, static_cast<int>(std::floor(cz - radius)));
+        int max_z = std::min(n_z - 1, static_cast<int>(std::ceil(cz + radius)));
+
+        for (int x = min_x; x <= max_x; ++x) {
+            float dx = x - cx;
+            float dx2 = dx * dx;
+            if (dx2 > r_sq) continue;
+            for (int y = min_y; y <= max_y; ++y) {
+                float dy = y - cy;
+                float dy2 = dy * dy;
+                float dxy2 = dx2 + dy2;
+                if (dxy2 > r_sq) continue;
+                for (int z = min_z; z <= max_z; ++z) {
+                    float dz = z - cz;
+                    float dist_sq = dxy2 + (dz * dz);
+                    if (dist_sq <= r_sq) {
+                        float distance = fill_value * (- radius +  std::sqrt(dist_sq)); //analytical distance transform of a sphere
+                        #pragma omp atomic update
+                        (*this)(x, y, z) += distance;
+                    }
+                }
+            }
+        }
+    }
+
+    void multiply(float coefficient){ 
+        #pragma omp parallel for 
+        for (size_t i = 0; i < data.size(); ++i) {
+            data[i]*= static_cast<T>(coefficient);
+        }
+    }
+    void add(T value){
+        #pragma omp parallel for 
+        for (size_t i=0; i< data.size(); ++i){
+            data[i]+=value;
+        }
+    }
+    void add(VoxelGrid base, T coefficient){
+        #pragma omp parallel for 
+        for (size_t i=0; i< data.size(); ++i){
+            data[i]+=base.data[i] * coefficient;
+        }
+    }
+
 };
 
 
