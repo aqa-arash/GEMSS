@@ -15,6 +15,9 @@
 #include <vector>
 #include <string>
 #include <fstream>
+#include <sstream>
+#include <iomanip>
+#include <cmath>
 #include <filesystem>
 #include <system_error>
 #include <Eigen/Core>
@@ -278,6 +281,294 @@ inline void print_sphere_pack_info(const SpherePack& sp) {
 
 }
 
+/**
+ * @brief Export sphere pack to JSON file 
+ */
+inline void export_sphere_pack_json(const SpherePack& sp, const std::string& output_path) {
+    // check if output has path and make it 
+    std::filesystem::path outp(output_path);
+    if (!outp.parent_path().empty()) std::filesystem::create_directories(outp.parent_path());
+
+    //open the file 
+    std::ofstream f(output_path, std::ios::out | std::ios::trunc);
+    if (!f.is_open()) throw std::runtime_error("Could not open file for writing: " + output_path);
+
+    // helper to maintain correct json format 
+    auto write_num = [&](double v) {
+        if (std::isfinite(v)) f << v; else f << "null";
+    };
+
+
+    f << std::fixed << std::setprecision(9); //for float, if needed switch to double = 17
+    f << "{\n";
+
+    f << "  \"n_spheres\": " << sp.num_spheres() << ",\n";
+
+    // centers
+    f << "  \"centers\": [\n";
+    for (int i = 0; i < (int)sp.centers.rows(); ++i) {
+        f << "    [";
+        write_num(sp.centers(i,0)); f << ", ";
+        write_num(sp.centers(i,1)); f << ", ";
+        write_num(sp.centers(i,2));
+        f << "]";
+        if (i + 1 < sp.centers.rows()) f << ",\n"; else f << "\n";
+    }
+    f << "  ],\n";
+
+    // radii
+    f << "  \"radii\": [";
+    for (int i = 0; i < (int)sp.radii.size(); ++i) {
+        write_num(sp.radii(i));
+        if (i + 1 < sp.radii.size()) f << ", ";
+    }
+    f << "],\n";
+
+    // simple fields
+    f << "  \"is_2d\": " << (sp.is_2d ? "true" : "false") << ",\n";
+    f << "  \"precision\": "; write_num(sp.precision); f << ",\n";
+    f << "  \"density\": "; write_num(sp.density); f << ",\n";
+    f << "  \"mass\": "; write_num(sp.mass); f << ",\n";
+    f << "  \"bounding_radius\": "; write_num(sp.bounding_radius); f << ",\n";
+
+    // center_of_mass
+    f << "  \"center_of_mass\": [";
+    write_num(sp.center_of_mass.x()); f << ", ";
+    write_num(sp.center_of_mass.y()); f << ", ";
+    write_num(sp.center_of_mass.z()); f << "],\n";
+
+    // inertia_tensor (row-major)
+    f << "  \"inertia_tensor\": [";
+    for (int r = 0; r < 3; ++r) for (int c = 0; c < 3; ++c) {
+        write_num(sp.inertia_tensor(r,c));
+        if (!(r==2 && c==2)) f << ", ";
+    }
+    f << "],\n";
+
+    // principal_axes (row-major)
+    f << "  \"principal_axes\": [";
+    for (int r = 0; r < 3; ++r) for (int c = 0; c < 3; ++c) {
+        write_num(sp.principal_axes(r,c));
+        if (!(r==2 && c==2)) f << ", ";
+    }
+    f << "],\n";
+
+    // principal_moments
+    f << "  \"principal_moments\": [";
+    write_num(sp.principal_moments.x()); f << ", ";
+    write_num(sp.principal_moments.y()); f << ", ";
+    write_num(sp.principal_moments.z());
+    f << "]\n";
+
+    f << "}\n";
+    f.close();
+}
+
+
+/**
+ * @brief imports spherepack from , csv (center and radii only)
+*/
+inline SpherePack import_csv(const std::string& path) {
+    std::ifstream file(path);
+    if (!file) throw std::runtime_error("File not found: " + path);
+
+    std::string line;
+    std::getline(file, line); 
+
+    std::vector<Eigen::Vector3f> centers;
+    std::vector<float> radii;
+
+    while (std::getline(file, line)) {
+        if (line.empty()) continue;
+        std::stringstream ss(line);
+        std::string token;
+        float x, y, z, r;
+
+        std::getline(ss, token, ','); x = std::stof(token);
+        std::getline(ss, token, ','); y = std::stof(token);
+        std::getline(ss, token, ','); z = std::stof(token);
+        std::getline(ss, token, ','); r = std::stof(token);
+
+        centers.emplace_back(x, y, z);
+        radii.push_back(r);
+    }
+
+    SpherePack sp(Eigen::MatrixX3f(centers.size(), 3), Eigen::VectorXf(radii.size()));
+    for (size_t i = 0; i < centers.size(); ++i) {
+        sp.centers.row(i) = centers[i];
+        sp.radii(i) = radii[i];
+    }
+
+    std::cout << "Import made from CSV format." << std::endl;
+    return sp;
+}
+
+/**
+ * @brief import center and radii from csv 
+ */
+inline SpherePack import_vtk(const std::string& path) {
+    std::ifstream file(path);
+    if (!file) throw std::runtime_error("File not found: " + path);
+
+    std::string token;
+    size_t num_points = 0;
+
+    while (file >> token) {
+        if (token == "POINTS") {
+            file >> num_points >> token; 
+            break;
+        }
+    }
+
+    SpherePack sp(Eigen::MatrixX3f(num_points, 3), Eigen::VectorXf(num_points));
+    for (size_t i = 0; i < num_points; ++i) {
+        file >> sp.centers(i, 0) >> sp.centers(i, 1) >> sp.centers(i, 2);
+    }
+
+    while (file >> token) {
+        if (token == "SCALARS") {
+            file >> token >> token >> token; 
+            file >> token >> token; 
+            break;
+        }
+    }
+
+    for (size_t i = 0; i < num_points; ++i) file >> sp.radii(i);
+
+    std::cout << "Import made from VTK format." << std::endl;
+    return sp;
+}
+
+/**
+ * @brief Hardcoded Json parser to remove library dependency 
+ */
+
+ inline SpherePack import_json(const std::string& path) {
+    std::ifstream file(path);
+    if (!file) throw std::runtime_error("File not found: " + path);
+    
+    // Load entire file into memory for fast string manipulation
+    std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    // Extract sequential numeric values associated with a specific JSON key
+    auto extract_numbers = [&](const std::string& key, size_t count) -> std::vector<float> {
+        std::vector<float> vals;
+        size_t pos = content.find("\"" + key + "\"");
+        if (pos == std::string::npos) {
+            std::cout << "[Warning] '" << key << "' missing.\n";
+            return vals;
+        }
+        
+        pos = content.find(':', pos);
+        if (pos == std::string::npos) return vals;
+        
+        pos++; // Advance index past the colon separator
+
+        std::string token;
+        while (pos < content.size() && vals.size() < count) {
+            char c = content[pos];
+            if (c == '"') break; 
+            
+            if (std::isspace(c) || c == ',' || c == '[' || c == ']') {
+                if (!token.empty()) {
+                    if (token == "null") vals.push_back(std::numeric_limits<float>::quiet_NaN());
+                    else vals.push_back(std::stof(token));
+                    token.clear();
+                }
+            } else {
+                token += c;
+            }
+            pos++;
+        }
+        
+        if (!token.empty() && vals.size() < count) {
+            if (token == "null") vals.push_back(std::numeric_limits<float>::quiet_NaN());
+            else vals.push_back(std::stof(token));
+        }
+        return vals;
+    };
+
+    // Locate key and determine boolean state
+    auto extract_bool = [&](const std::string& key) -> bool {
+        size_t pos = content.find("\"" + key + "\"");
+        if (pos == std::string::npos) return false;
+        pos = content.find(':', pos);
+        size_t t = content.find("true", pos);
+        size_t f = content.find("false", pos);
+        return (t < f); 
+    };
+
+    SpherePack sp;
+
+    std::vector<float> n_val = extract_numbers("n_spheres", 1);
+    if (n_val.empty()) return sp;
+    size_t n = static_cast<size_t>(n_val[0]);
+
+    std::vector<float> c_vals = extract_numbers("centers", n * 3);
+    std::vector<float> r_vals = extract_numbers("radii", n);
+
+    if (c_vals.size() == n * 3 && r_vals.size() == n) {
+        sp.centers.resize(n, 3);
+        sp.radii.resize(n);
+        for (size_t i = 0; i < n; ++i) {
+            sp.centers(i, 0) = c_vals[i * 3 + 0];
+            sp.centers(i, 1) = c_vals[i * 3 + 1];
+            sp.centers(i, 2) = c_vals[i * 3 + 2];
+            sp.radii(i) = r_vals[i];
+        }
+    }
+
+    sp.is_2d = extract_bool("is_2d");
+
+    auto set_scalar = [&](const std::string& key, float& target) {
+        std::vector<float> v = extract_numbers(key, 1);
+        if (!v.empty()) target = v[0];
+    };
+
+    set_scalar("precision", sp.precision);
+    set_scalar("density", sp.density);
+    set_scalar("mass", sp.mass);
+    set_scalar("bounding_radius", sp.bounding_radius);
+
+    auto set_vec = [&](const std::string& key, Eigen::Vector3f& target) {
+        std::vector<float> v = extract_numbers(key, 3);
+        if (v.size() == 3) target << v[0], v[1], v[2];
+    };
+
+    set_vec("center_of_mass", sp.center_of_mass);
+    set_vec("principal_moments", sp.principal_moments);
+
+    auto set_mat = [&](const std::string& key, Eigen::Matrix3f& target) {
+        std::vector<float> v = extract_numbers(key, 9);
+        if (v.size() == 9) {
+            for (int r = 0; r < 3; ++r) 
+                for (int c = 0; c < 3; ++c) 
+                    target(r, c) = v[r * 3 + c];
+        }
+    };
+
+    set_mat("inertia_tensor", sp.inertia_tensor);
+    set_mat("principal_axes", sp.principal_axes);
+
+    std::cout << "Import made from JSON format." << std::endl;
+    return sp;
+}
+
+
+/**
+ * @brief wrapper for the import functions 
+ */
+inline SpherePack import_sphere_pack(const std::string& path) {
+    std::filesystem::path file_path(path);
+    std::string ext = file_path.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    if (ext == ".csv") return import_csv(path);
+    if (ext == ".vtk") return import_vtk(path);
+    if (ext == ".json") return import_json(path);
+
+    throw std::runtime_error("Unsupported file extension: " + ext);
+}
 } // namespace MSS
 
 #endif // GEMSS_IO_HPP
