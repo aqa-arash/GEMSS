@@ -138,6 +138,16 @@ inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_
  */
 inline void print_sphere_pack_info(const SpherePack& sp);
 
+/**
+ * @brief exports sphere pack to json file
+ */
+inline void export_sphere_pack_json(const SpherePack& sp, const std::string& output_path); 
+
+/**
+ * @brief imports sphere pack (from json, or csv or vtk of only sphere centers and radii)
+ */
+inline SpherePack import_sphere_pack(const std::string& filename); 
+
 
 } // namespace GEMSS
 
