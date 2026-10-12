@@ -58,44 +58,25 @@ void validate_import(const SpherePack& original, const SpherePack& imported, con
 int main() {
     std::cout << "--- Multisphere Reconstruction Test ---" << std::endl;
 
-<<<<<<< HEAD
-    // List of mesh files to process
-    std::vector<std::string> models = { "ice_cream_cone.stl" };
-=======
-    std::vector<std::string> models = { "example_mesh.stl" };
->>>>>>> 666b1c39749d026ea93cb8ae08296af781e3b54f
+    std::vector<std::string> models = { "bunny.stl" };
 
     for (const auto& model_name : models) {
         STLMesh example_mesh = load_mesh(model_name);
 
         GEMSS::MultisphereConfig config;
-<<<<<<< HEAD
-        config.div = 400; // Voxel grid resolution
-        config.padding = 2; // Grid padding
-        config.search_window = 10; // Search window size
-        config.min_center_distance_rel = 0.5f; // Minimum center distance relative to radius
-        config.min_radius_vox = 20; // Minimum radius in voxels
-        config.precision_target = 0.99f; // Target precision
-        config.max_spheres = 10000; // Maximum number of spheres
-        config.show_progress = true; // Show progress output
-        config.confine_mesh = false; // Do not confine spheres to mesh boundary
-        config.initial_sphere_table = Eigen::MatrixXf(0,4); // No initial sphere table
-        config.compute_physics = 1; // Compute physical properties
-        config.prune_isolated_spheres = true; // Do not prune isolated spheres
-=======
         config.div = 400; 
         config.padding = 2; 
         config.search_window = 10; 
-        config.min_center_distance_rel = 0.5f; 
-        config.min_radius_vox = 12; 
+        config.min_center_distance_rel = 1.5f; 
+        config.min_radius_vox = 10; 
         config.precision_target = 0.99f; 
-        config.max_spheres = 10000; 
+        config.max_spheres = 100000; 
+        config.radius_offset_vox = 1; 
         config.show_progress = true; 
         config.confine_mesh = false; 
         config.initial_sphere_table = Eigen::MatrixXf(0,4); 
         config.compute_physics = 1; 
         config.prune_isolated_spheres = true; 
->>>>>>> 666b1c39749d026ea93cb8ae08296af781e3b54f
 
         SpherePack single_sp = multisphere_from_mesh(
             example_mesh,

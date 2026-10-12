@@ -299,7 +299,7 @@ inline void export_sphere_pack_json(const SpherePack& sp, const std::string& out
     };
 
 
-    f << std::fixed << std::setprecision(9); //for float, if needed switch to double = 17
+    f << std::scientific << std::setprecision(std::numeric_limits<double>::max_digits10); //change to 17 if modded for double precision
     f << "{\n";
 
     f << "  \"n_spheres\": " << sp.num_spheres() << ",\n";
@@ -404,7 +404,7 @@ inline SpherePack import_csv(const std::string& path) {
 }
 
 /**
- * @brief import center and radii from csv 
+ * @brief import center and radii from vtk 
  */
 inline SpherePack import_vtk(const std::string& path) {
     std::ifstream file(path);
