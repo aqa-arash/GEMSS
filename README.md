@@ -11,7 +11,7 @@
   </a>
   <a href="#citation">
     <img src="https://img.shields.io/badge/DOI-pending-lightgrey.svg?style=flat-square"
-         alt="DOI: pending">
+         alt="DOI: [pending](https://doi.org/10.1016/j.powtec.2026.123162)">
   </a>
 </p>
 ---
@@ -245,10 +245,14 @@ moradian.arash@gmail.com
 
 Contributors: Felix Buchele, Patric Müller, Thorsten Pöschel
 
+
 ## Citation
 
-Felix Buchele, Patric Müller, Thorsten Pöschel,  
-*Multi-Sphere-Shape generator for DEM simulations* manuscript in preparation
+Algorithm :
+Felix Buchele, Thorsten Pöschel, Patric Müller. *Multi-sphere shape generator for DEM simulations of complex-shaped particles*. Powder Technology, 480, 122635 (2026). https://doi.org/10.1016/j.powtec.2026.122635
+
+Implementation : 
+A. Moradian, F. Buchele, P. Müller, T. Pöschel. *GEMSS: A C++ library for multi-sphere modeling in DEM simulations*. Powder Technology, 123162 (2026). https://doi.org/10.1016/j.powtec.2026.123162
 
 ---
 
