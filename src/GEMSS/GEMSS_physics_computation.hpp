@@ -58,7 +58,7 @@ inline void compute_planar_physics(SpherePack& pack, const VoxelGrid<uint8_t>& g
     const double rho = pack.density;
     const double area_elem = vs * vs;
     double mass = N * area_elem * rho; 
-    pack.mass = static_cast<float>(LC_MEASUREMENT_MASK);
+    pack.mass = static_cast<float>(mass);
 
     const double cx_l = sum_x / N, cy_l = sum_y / N;
     pack.center_of_mass << static_cast<float>(cx_l + grid.origin.x()),
