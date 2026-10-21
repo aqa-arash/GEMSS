@@ -14,6 +14,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <algorithm>
+#include <limits>
 #include <Eigen/Core>
 #include <Eigen/Eigenvalues>
 #ifdef HAVE_OPENMP
@@ -40,7 +42,7 @@ inline void compute_planar_physics(SpherePack& pack, const VoxelGrid<uint8_t>& g
     for (int x = 0; x < nx; ++x) {
         for (int y = 0; y < ny; ++y) {
             if (grid(x, y, 0) > 0) {
-                const double cx = x * vs, cy = y * vs;
+                const double cx = (x + 0.5) * vs, cy = (y + 0.5) * vs;
                 ++N;
                 sum_x += cx;  sum_y += cy;
                 sum_xx += cx * cx;  sum_yy += cy * cy;
@@ -57,7 +59,7 @@ inline void compute_planar_physics(SpherePack& pack, const VoxelGrid<uint8_t>& g
 
     const double rho = pack.density;
     const double area_elem = vs * vs;
-    double mass = N * area_elem * rho; 
+    const double mass =  N * area_elem * rho;
     pack.mass = static_cast<float>(mass);
 
     const double cx_l = sum_x / N, cy_l = sum_y / N;
@@ -79,7 +81,7 @@ inline void compute_planar_physics(SpherePack& pack, const VoxelGrid<uint8_t>& g
     const Eigen::Vector2f com2 = pack.center_of_mass.head<2>();
     for (size_t i = 0; i < pack.num_spheres(); ++i) {
         const Eigen::Vector3f c3 = pack.centers.row(i);
-        const double dist = (c3.head<2>() - com2).norm() + pack.radii(i) + std::sqrt(2.0) * vs;
+        const double dist = (c3.head<2>() - com2).norm() + pack.radii(i); // + std::sqrt(2.0) * vs; padded bounding radius 
         if (dist > max_r) max_r = dist;
     }
     pack.bounding_radius = static_cast<float>(max_r);
@@ -119,9 +121,9 @@ inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_
                     N_vox++;
                     
                     // Local physical coordinates
-                    double cx = x * vs;
-                    double cy = y * vs;
-                    double cz = z * vs;
+                    double cx = (x + 0.5) * vs;
+                    double cy = (y + 0.5) * vs;
+                    double cz = (z + 0.5) * vs;
 
                     sum_x += cx;
                     sum_y += cy;
@@ -150,8 +152,7 @@ inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_
 
     double rho = pack.density; 
     double voxel_vol = vs * vs * vs;
-    double mass = N_vox * voxel_vol * rho; // mass = volume * density
-    pack.mass =  mass;
+    pack.mass =  N_vox * voxel_vol * rho; // mass = volume * density
 
     // 1. Calculate LOCAL Center of Mass
     double cx_local = sum_x / N_vox;
@@ -218,17 +219,30 @@ inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_
         pack.principal_axes.setIdentity();
     }
 
-    // 5. Calculate Bounding Radius
+    // 5. Calculate Bounding Radius and extents along the principal axes (sorted L >= I >= S)
     double max_r = 0.0;
+    Eigen::Vector3f ext_min = Eigen::Vector3f::Constant(std::numeric_limits<float>::max());
+    Eigen::Vector3f ext_max = -ext_min;
     for (size_t i = 0; i < pack.num_spheres(); ++i) {
         Eigen::Vector3f center = pack.centers.row(i);
         float radius = pack.radii(i);
 
         // Ensure pack.center_of_mass is cast to Vector3f for type consistency
-        double dist = (center - pack.center_of_mass.cast<float>()).norm() + radius + std::sqrt(3) * vs; // Add a diagonal voxel for safety
+        double dist = (center - pack.center_of_mass.cast<float>()).norm() + radius;
         if (dist > max_r) max_r = dist;
+
+        // Sphere centre in the principal frame
+        Eigen::Vector3f local = pack.principal_axes.transpose() * (center - pack.center_of_mass.cast<float>());
+        ext_min = ext_min.cwiseMin(local - Eigen::Vector3f::Constant(radius));
+        ext_max = ext_max.cwiseMax(local + Eigen::Vector3f::Constant(radius));
     }
     pack.bounding_radius = static_cast<float>(max_r);
+
+    if (pack.num_spheres() > 0) {
+        Eigen::Vector3f extents = ext_max - ext_min;
+        std::sort(extents.data(), extents.data() + 3);
+        pack.principal_extents = extents.reverse();
+    }
 }
 
 } // namespace MSS

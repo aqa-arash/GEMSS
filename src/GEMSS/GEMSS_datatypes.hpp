@@ -57,6 +57,8 @@ struct SpherePack {
     Eigen::Matrix3f inertia_tensor = Eigen::Matrix3f::Zero();
     Eigen::Matrix3f principal_axes = Eigen::Matrix3f::Identity();
     Eigen::Vector3f principal_moments = Eigen::Vector3f::Zero();
+    Eigen::Vector3f principal_extents = Eigen::Vector3f::Zero(); ///< Extents of the union along the principal axes, sorted L >= I >= S
+
 
     SpherePack(Eigen::MatrixX3f c = Eigen::MatrixX3f(0, 3), Eigen::VectorXf r = Eigen::VectorXf(0)) 
         : centers (c), radii(r) {
