@@ -152,7 +152,8 @@ inline void compute_multisphere_physics(SpherePack& pack, const VoxelGrid<uint8_
 
     double rho = pack.density; 
     double voxel_vol = vs * vs * vs;
-    pack.mass =  N_vox * voxel_vol * rho; // mass = volume * density
+    double mass =  N_vox * voxel_vol * rho; // mass = volume * density
+    pack.mass = mass;
 
     // 1. Calculate LOCAL Center of Mass
     double cx_local = sum_x / N_vox;
