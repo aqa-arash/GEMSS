@@ -248,7 +248,7 @@ private slots:
         try {
             infoBox->clear();
             infoBox->append("<b>--- Loading SpherePack from JSON ---</b>");
-            currentPack = GEMSS::import_from_json(fname.toStdString());
+            currentPack = GEMSS::import_sphere_pack(fname.toStdString());
             exportJsonBtn->setEnabled(true);
             displaySpherePack();
         } catch (const std::exception& e) {
@@ -262,7 +262,7 @@ private slots:
         if (fname.isEmpty()) return;
         
         try {
-            GEMSS::export_to_json(fname.toStdString(), currentPack);
+            GEMSS::export_sphere_pack_json(currentPack, fname.toStdString());
             infoBox->append(QString("<b>Exported to:</b> %1").arg(fname));
         } catch (const std::exception& e) {
             infoBox->append(QString("<font color='red'>Failed to export JSON: %1</font>").arg(e.what()));
@@ -353,10 +353,10 @@ private slots:
         renderer->ResetCamera();
         renderWindow->Render();
         
-        QString info = QString("Spheres: %1\nPrecision: %2\nVolume: %3\nBounding radius: %4\nCoM: [%5, %6, %7]\n")
+        QString info = QString("Spheres: %1\nPrecision: %2\nMass: %3\nBounding radius: %4\nCoM: [%5, %6, %7]\n")
             .arg(currentPack.num_spheres())
             .arg(currentPack.precision)
-            .arg(currentPack.volume)
+            .arg(currentPack.mass)
             .arg(currentPack.bounding_radius)
             .arg(currentPack.center_of_mass.x()).arg(currentPack.center_of_mass.y()).arg(currentPack.center_of_mass.z());
 
