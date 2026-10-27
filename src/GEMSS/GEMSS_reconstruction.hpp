@@ -63,7 +63,7 @@ inline SpherePack multisphere_from_voxels(
     }
 
     if (config.minimum_radius_real > 0.0f) {
-        int physical_min_vox = static_cast<int>(std::ceil(config.minimum_radius_real / voxel_size));
+        int physical_min_vox = static_cast<int>(std::ceil(config.minimum_radius_real / input_grid.voxel_size));
         if (physical_min_vox > 1) {
             config.min_radius_vox = std::max(config.min_radius_vox, physical_min_vox);
             #ifdef MULTISPHERE_DEBUG
