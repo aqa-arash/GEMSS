@@ -43,6 +43,7 @@
 
 #include <iostream>
 #include <streambuf>
+#include <exception>
 
 #include "GEMSS/GEMSS-interface.h"
 
@@ -86,10 +87,24 @@ public:
         QWidget *central = new QWidget(this);
         QHBoxLayout *mainLayout = new QHBoxLayout(central);
         QVBoxLayout *controlsLayout = new QVBoxLayout();
-        // File load
+        
+        // File I/O layout
+        QHBoxLayout *fileLayout = new QHBoxLayout();
         QPushButton *loadBtn = new QPushButton("Load STL");
         connect(loadBtn, &QPushButton::clicked, this, &GEMSSWindow::onLoadSTL);
-        controlsLayout->addWidget(loadBtn);
+        fileLayout->addWidget(loadBtn);
+
+        importJsonBtn = new QPushButton("Import JSON");
+        connect(importJsonBtn, &QPushButton::clicked, this, &GEMSSWindow::onImportJSON);
+        fileLayout->addWidget(importJsonBtn);
+
+        exportJsonBtn = new QPushButton("Export JSON");
+        exportJsonBtn->setEnabled(false);
+        connect(exportJsonBtn, &QPushButton::clicked, this, &GEMSSWindow::onExportJSON);
+        fileLayout->addWidget(exportJsonBtn);
+
+        controlsLayout->addLayout(fileLayout);
+
         // Opacity
         QLabel *opacityLabel = new QLabel("Mesh Opacity");
         QSlider *opacitySlider = new QSlider(Qt::Horizontal);
@@ -98,6 +113,7 @@ public:
         connect(opacitySlider, &QSlider::valueChanged, this, &GEMSSWindow::onOpacityChanged);
         controlsLayout->addWidget(opacityLabel);
         controlsLayout->addWidget(opacitySlider);
+        
         // Config
         QGroupBox *configBox = new QGroupBox("MultisphereConfig");
         QFormLayout *configForm = new QFormLayout();
@@ -136,23 +152,28 @@ public:
         configForm->addRow("persistence", persistenceSpin);
         configBox->setLayout(configForm);
         controlsLayout->addWidget(configBox);
+        
         // Run button
         runBtn = new QPushButton("Run Multisphere");
         connect(runBtn, &QPushButton::clicked, this, &GEMSSWindow::onRunMultisphere);        
         controlsLayout->addWidget(runBtn);
+        
         // Initialize the Progress Bar
         progressBar = new QProgressBar();
         progressBar->setRange(0, 100);
         progressBar->setValue(0);
         progressBar->setTextVisible(false); // Keeps it clean
         controlsLayout->addWidget(progressBar);
+        
         // Info output
         infoBox = new QTextEdit(); infoBox->setReadOnly(true);
         controlsLayout->addWidget(new QLabel("Sphere Pack Info"));
         controlsLayout->addWidget(infoBox);
         controlsLayout->addStretch();
+        
         // Create the redirector for std::cout
         redirector = new StdRedirector(std::cout);
+        
         // VTK
         vtkWidget = new QVTKOpenGLNativeWidget(this);
         renderWindow = vtkSmartPointer<vtkGenericOpenGLRenderWindow>::New();
@@ -181,12 +202,15 @@ public:
         cubeActor->GetProperty()->SetColor(0.2, 0.2, 0.2);
         cubeActor->GetProperty()->SetOpacity(0.3);
         renderer->AddActor(cubeActor);
+        
         mainLayout->addLayout(controlsLayout, 1);
         mainLayout->addWidget(vtkWidget, 3);
         setCentralWidget(central);
+        
         // setup watcher
         watcher = new QFutureWatcher<GEMSS::SpherePack>(this);
         connect(watcher, &QFutureWatcherBase::finished, this, &GEMSSWindow::onProcessingFinished);
+        
         // Connect the redirector to the text update slot
         connect(redirector, &StdRedirector::textReceived, 
             this, &GEMSSWindow::onTextReceived, Qt::QueuedConnection);
@@ -194,10 +218,9 @@ public:
 
 private slots:
     void onTextReceived(QString text) {
-        infoBox->append(text); // Appends the console line to the text box
-        // Optional: auto-scroll to bottom
-        //infoBox->ensureCursorVisible();
+        infoBox->append(text);
     }
+    
     void onLoadSTL() {
         QString fname = QFileDialog::getOpenFileName(this, "Open STL File", "", "STL Files (*.stl)");
         if (fname.isEmpty()) return;
@@ -217,23 +240,51 @@ private slots:
         renderer->ResetCamera();
         renderWindow->Render();
     }
+
+    void onImportJSON() {
+        QString fname = QFileDialog::getOpenFileName(this, "Import JSON File", "", "JSON Files (*.json)");
+        if (fname.isEmpty()) return;
+        
+        try {
+            infoBox->clear();
+            infoBox->append("<b>--- Loading SpherePack from JSON ---</b>");
+            currentPack = GEMSS::import_from_json(fname.toStdString());
+            exportJsonBtn->setEnabled(true);
+            displaySpherePack();
+        } catch (const std::exception& e) {
+            infoBox->append(QString("<font color='red'>Failed to load JSON: %1</font>").arg(e.what()));
+        }
+    }
+
+    void onExportJSON() {
+        if (currentPack.num_spheres() == 0) return;
+        QString fname = QFileDialog::getSaveFileName(this, "Export JSON File", "", "JSON Files (*.json)");
+        if (fname.isEmpty()) return;
+        
+        try {
+            GEMSS::export_to_json(fname.toStdString(), currentPack);
+            infoBox->append(QString("<b>Exported to:</b> %1").arg(fname));
+        } catch (const std::exception& e) {
+            infoBox->append(QString("<font color='red'>Failed to export JSON: %1</font>").arg(e.what()));
+        }
+    }
+
     void onOpacityChanged(int value) {
         if (meshActor) {
             meshActor->GetProperty()->SetOpacity(value / 100.0);
             renderWindow->Render();
         }
     }
+
     void onRunMultisphere() {
         if (currentSTL.isEmpty()) return;
-        infoBox->clear(); // Clear previous logs
+        infoBox->clear();
         infoBox->append("<b>--- Starting Multisphere Calculation ---</b>");
-        // 1. UI Feedback: Disable button and start "busy" animation
         runBtn->setEnabled(false);
-        progressBar->setRange(0, 0); // Setting range 0-0 makes it an "Indeterminate" pulse bar
-        infoBox->setText("Processing... please wait.");// 1. UI Feedback: Disable button and start "busy" animation
+        exportJsonBtn->setEnabled(false);
+        progressBar->setRange(0, 0);
+        infoBox->setText("Processing... please wait.");
 
-
-        // --- Load mesh using GEMSS ---
         GEMSS::STLMesh mesh = GEMSS::load_mesh(currentSTL.toStdString());
         GEMSS::MultisphereConfig config;
         config.div = divSpin->value();
@@ -250,36 +301,40 @@ private slots:
         config.radius_offset_vox = radiusOffsetEdit->text().toFloat();
         config.search_window = searchWindowSpin->value();
         config.persistence = persistenceSpin->value();
-        // 3. Launch calculation in a background thread
+        
         QFuture<GEMSS::SpherePack> future = QtConcurrent::run(GEMSS::multisphere_from_mesh, mesh, config);
-        watcher->setFuture(future);        // --- Visualize spheres ---
+        watcher->setFuture(future);        
     }
 
     void onProcessingFinished() { 
-        // 1. Get the result from the thread
-        GEMSS::SpherePack pack = watcher->result();
-        // 2. Stop the progress bar
+        currentPack = watcher->result();
         progressBar->setRange(0, 100);
         progressBar->setValue(100);
         runBtn->setEnabled(true);
-        // Color code spheres by radius
-        float min_r = pack.radii.size() > 0 ? pack.radii.minCoeff() : 0.0f;
-        float max_r = pack.radii.size() > 0 ? pack.radii.maxCoeff() : 1.0f;
+        exportJsonBtn->setEnabled(true);
+        
+        displaySpherePack();
+    }
+
+    void displaySpherePack() {
+        float min_r = currentPack.radii.size() > 0 ? currentPack.radii.minCoeff() : 0.0f;
+        float max_r = currentPack.radii.size() > 0 ? currentPack.radii.maxCoeff() : 1.0f;
+        
         std::vector<vtkSmartPointer<vtkActor>> sphereActors;
-        for (int i = 0; i < pack.centers.rows(); ++i) {
+        for (int i = 0; i < currentPack.centers.rows(); ++i) {
             vtkSmartPointer<vtkSphereSource> sphere = vtkSmartPointer<vtkSphereSource>::New();
-            sphere->SetCenter(pack.centers(i,0), pack.centers(i,1), pack.centers(i,2));
-            sphere->SetRadius(pack.radii(i));
+            sphere->SetCenter(currentPack.centers(i,0), currentPack.centers(i,1), currentPack.centers(i,2));
+            sphere->SetRadius(currentPack.radii(i));
             sphere->SetThetaResolution(16);
             sphere->SetPhiResolution(16);
             sphere->Update();
+            
             vtkSmartPointer<vtkPolyDataMapper> mapper = vtkSmartPointer<vtkPolyDataMapper>::New();
             mapper->SetInputConnection(sphere->GetOutputPort());
             vtkSmartPointer<vtkActor> actor = vtkSmartPointer<vtkActor>::New();
             actor->SetMapper(mapper);
-            // Normalize radius to [0,1] for colormap
-            float norm = (pack.radii(i) - min_r) / (max_r - min_r + 1e-6f);
-            // Simple blue-to-red colormap
+            
+            float norm = (currentPack.radii(i) - min_r) / (max_r - min_r + 1e-6f);
             double r = norm;
             double g = 0.2;
             double b = 1.0 - norm;
@@ -287,8 +342,9 @@ private slots:
             actor->GetProperty()->SetOpacity(0.5);
             sphereActors.push_back(actor);
         }
+        
         renderer->RemoveAllViewProps();
-        renderer->AddActor(meshActor);
+        if (meshActor) renderer->AddActor(meshActor);
         for (auto &actor : sphereActors) {
             renderer->AddActor(actor);
         }
@@ -296,49 +352,53 @@ private slots:
         if (cubeActor) renderer->AddActor(cubeActor);
         renderer->ResetCamera();
         renderWindow->Render();
-        // --- Info ---
+        
         QString info = QString("Spheres: %1\nPrecision: %2\nVolume: %3\nBounding radius: %4\nCoM: [%5, %6, %7]\n")
-            .arg(pack.num_spheres())
-            .arg(pack.precision)
-            .arg(pack.volume)
-            .arg(pack.bounding_radius)
-            .arg(pack.center_of_mass.x()).arg(pack.center_of_mass.y()).arg(pack.center_of_mass.z());
+            .arg(currentPack.num_spheres())
+            .arg(currentPack.precision)
+            .arg(currentPack.volume)
+            .arg(currentPack.bounding_radius)
+            .arg(currentPack.center_of_mass.x()).arg(currentPack.center_of_mass.y()).arg(currentPack.center_of_mass.z());
 
-        // Moments of inertia (principal moments)
         info += QString("Principal moments: [%1, %2, %3]\n")
-            .arg(pack.principal_moments(0))
-            .arg(pack.principal_moments(1))
-            .arg(pack.principal_moments(2));
+            .arg(currentPack.principal_moments(0))
+            .arg(currentPack.principal_moments(1))
+            .arg(currentPack.principal_moments(2));
 
-        // Principal axes (as columns of the matrix)
         info += "Principal axes (columns):\n";
         for (int col = 0; col < 3; ++col) {
             info += QString("  [%1, %2, %3]\n")
-                .arg(pack.principal_axes(0, col))
-                .arg(pack.principal_axes(1, col))
-                .arg(pack.principal_axes(2, col));
+                .arg(currentPack.principal_axes(0, col))
+                .arg(currentPack.principal_axes(1, col))
+                .arg(currentPack.principal_axes(2, col));
         }
+
+        info += QString("Principal extents (L, I, S): [%1, %2, %3]\n")
+            .arg(currentPack.principal_extents(0))
+            .arg(currentPack.principal_extents(1))
+            .arg(currentPack.principal_extents(2));
 
         infoBox->setText(info);
     }
+
 private:
-    // Config widgets
     QSpinBox *divSpin, *paddingSpin, *minRadiusVoxSpin, *maxSpheresSpin, *computePhysicsSpin, *searchWindowSpin, *persistenceSpin;
     QLineEdit *minRadiusRealEdit, *minCenterDistEdit, *precisionTargetEdit, *radiusOffsetEdit;
     QCheckBox *confineMeshBox, *pruneIsolatedBox, *showProgressBox;
     QTextEdit *infoBox;
     QProgressBar *progressBar;
-    QPushButton *runBtn; // Move this from constructor to class member
-    QFutureWatcher<GEMSS::SpherePack> *watcher; // To watch the background task
-    // VTK
+    QPushButton *runBtn, *importJsonBtn, *exportJsonBtn;
+    QFutureWatcher<GEMSS::SpherePack> *watcher;
+    
     QVTKOpenGLNativeWidget *vtkWidget;
     vtkSmartPointer<vtkGenericOpenGLRenderWindow> renderWindow;
     vtkSmartPointer<vtkRenderer> renderer;
     vtkSmartPointer<vtkActor> meshActor;
     vtkSmartPointer<vtkAxesActor> axes;
     vtkSmartPointer<vtkActor> cubeActor;
+    
     QString currentSTL;
-    //std
+    GEMSS::SpherePack currentPack;
     StdRedirector* redirector;
 };
 
