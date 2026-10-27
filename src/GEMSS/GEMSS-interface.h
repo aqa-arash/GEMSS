@@ -66,7 +66,7 @@ inline VoxelGrid<uint8_t> mesh_to_binary_grid(const STLMesh& mesh, MultisphereCo
  */
 inline SpherePack multisphere_from_voxels(
 	const VoxelGrid<uint8_t>& input_grid,
-	const MultisphereConfig& config //= MultisphereConfig()
+	MultisphereConfig config //= MultisphereConfig()
 );
 
 /**

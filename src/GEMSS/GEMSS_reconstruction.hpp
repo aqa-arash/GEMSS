@@ -49,7 +49,7 @@ namespace GEMSS {
  */
 inline SpherePack multisphere_from_voxels(
     const VoxelGrid<uint8_t>& input_grid,
-    const MultisphereConfig& config = MultisphereConfig()
+    MultisphereConfig config = MultisphereConfig()
 ) {
 
 
@@ -63,8 +63,8 @@ inline SpherePack multisphere_from_voxels(
     }
 
     if (config.minimum_radius_real > 0.0f) {
-        int min_radius_vox = static_cast<int>(std::ceil(config.minimum_radius_real / voxel_size));
-        if (min_radius_vox > 1) {
+        int physical_min_vox = static_cast<int>(std::ceil(config.minimum_radius_real / input_grid.voxel_size));
+        if (physical_min_vox > 1) {
             config.min_radius_vox = std::max(config.min_radius_vox, physical_min_vox);
             #ifdef MULTISPHERE_DEBUG
                 std::cout << "[Config] Updated min_radius_vox to " << config.min_radius_vox 
