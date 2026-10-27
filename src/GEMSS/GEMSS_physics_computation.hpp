@@ -54,6 +54,7 @@ inline void compute_planar_physics(SpherePack& pack, const VoxelGrid<uint8_t>& g
         pack.mass = 0.0f; pack.center_of_mass.setZero();
         pack.inertia_tensor.setZero(); pack.principal_moments.setZero();
         pack.principal_axes.setIdentity(); pack.bounding_radius = 0.0f;
+        pack.principal_extents.setZero(); // Added zero initialization for extents
         return;
     }
 
@@ -79,12 +80,32 @@ inline void compute_planar_physics(SpherePack& pack, const VoxelGrid<uint8_t>& g
 
     double max_r = 0.0;
     const Eigen::Vector2f com2 = pack.center_of_mass.head<2>();
+    
+    // Initialize extents limits
+    Eigen::Vector3f ext_min = Eigen::Vector3f::Constant(std::numeric_limits<float>::max());
+    Eigen::Vector3f ext_max = -ext_min;
+
     for (size_t i = 0; i < pack.num_spheres(); ++i) {
-        const Eigen::Vector3f c3 = pack.centers.row(i);
-        const double dist = (c3.head<2>() - com2).norm() + pack.radii(i); // + std::sqrt(2.0) * vs; padded bounding radius 
+        const Eigen::Vector3f center = pack.centers.row(i);
+        const float radius = pack.radii(i);
+        
+        // Calculate bounding radius
+        const double dist = (center.head<2>() - com2).norm() + radius;
         if (dist > max_r) max_r = dist;
+
+        // Calculate local bounding extents
+        Eigen::Vector3f local = pack.principal_axes.transpose() * (center - pack.center_of_mass.cast<float>());
+        ext_min = ext_min.cwiseMin(local - Eigen::Vector3f::Constant(radius));
+        ext_max = ext_max.cwiseMax(local + Eigen::Vector3f::Constant(radius));
     }
     pack.bounding_radius = static_cast<float>(max_r);
+
+    // Sort and assign extents
+    if (pack.num_spheres() > 0) {
+        Eigen::Vector3f extents = ext_max - ext_min;
+        std::sort(extents.data(), extents.data() + 3);
+        pack.principal_extents = extents.reverse();
+    }
 }
 
 
