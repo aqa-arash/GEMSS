@@ -116,7 +116,7 @@ public:
 
     /**
      * @brief Compute distance transform using EDT library.
-     * @return VoxelGrid<float> with physical distances.
+     * @return VoxelGrid<float> with voxelized distances.
      */
     VoxelGrid<float> distance_transform(bool binary_mode = true ) const {
         VoxelGrid<float> result(nx(), ny(), nz(), voxel_size, origin);
