@@ -1,0 +1,45 @@
+# GEMSS Examples
+
+[Main README](README.md) · [Configuration](README_CONFIG.md) · [Data types](README_DATATYPES.md)
+
+C++ examples are located in `src/` and built as individual targets named after their `.cpp` files. Python scripts, sample meshes, and output data reside in `examples/`. 
+
+## Build and Run (C++)
+
+Requires CMake 3.15+, Eigen3, and a C++17 compliant compiler (GCC/Clang recommended). 
+
+```sh
+cmake -S src -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_GUI=OFF
+cmake --build build --config Release --target main_mesh -j 4
+cd examples
+../build/main_mesh
+```
+* **Memory usage:** `main_mesh` uses a high resolution (`div=400`). Lower this in the source if you encounter out-of-memory errors on your first run.
+* **Windows/MSVC:** The default CMake configuration uses GCC-specific optimization flags. Adjust these in `CMakeLists.txt` for MSVC environments. 
+
+## C++ Example Targets
+
+* **`main_mesh`**: STL I/O round-trip. Reconstructs a mesh, computes mask physics, exports to CSV/VTK/JSON, and validates the imports across formats.
+* **`main`**: Synthetic shape gallery. Generates and reconstructs standard voxel masks (torus, L-shape, clusters, etc.) capped at 10 spheres, exporting to CSV/VTK/STL.
+* **`main_collision`**: Geometry study of overlapping spheres. Analyzes union reconstructions as center distance decreases, outputting step-by-step VTK files.
+* **`main_box`**: Sphere-count sweep. Performs 10 sequential reconstructions on a large bounding box with limits scaling from 5 to 2560 spheres.
+* **`main_rectangle`**: Physical unit mapping. Demonstrates converting physical bounding boxes and minimum radii into discrete voxel coordinates.
+* **`main_convergence_test` & `secondary_convergence_test`**: Resolution and sphere-count scaling studies. *Requires an external mesh (`Hamburg_Sand_particle_00058.stl`) not included in the repository.*
+* **`main_shape_validation`**: Analytical verification. Compares generated physics (volume, CoM, inertia) against exact mathematical primitives. *Requires manually creating a `shape_validation_results/` folder in the `examples/` directory before execution.*
+* **`main_boost`**: Seeded reconstruction. Uses an `initial_sphere_table` to pass existing spheres into the solver. (Note: "Boost" refers to seeding the solver, not the C++ Boost library).
+* **`gemss_gui`**: Qt5/VTK graphical interface for mesh loading, reconstruction, and visual inspection. *Requires compiling with `-DBUILD_GUI=ON`.*
+
+## Sample Data (`examples/`)
+
+| File | Description |
+| :--- | :--- |
+| `example_mesh.stl` | Default test mesh for `main_mesh` and Python scripts |
+| `stanford-bunny.stl`, `xyzrgb_dragon.stl` | Standard complex test meshes |
+| `utah_teapot.stl`, `3DBenchy_closed.stl` | Standard industrial test meshes |
+| `example_voxels.npy`, `ice_cream_cone.npy`| Pre-computed voxel arrays for Python examples |
+
+## Viewing Output
+
+* **ParaView Integration:** Load VTK outputs in ParaView and apply the **Sphere Glyph** filter using the `radius` scalar to visualize the pack. Point records alone will not render as volumes.
+* **STL Overlays:** The `grid_to_mesh` STL outputs represent the discrete voxel boundaries, useful for overlaying against the generated sphere packs to verify fill volume.
+* **Extents Data:** The `principal_extents` property is computed for 3D packs but omitted from default CSV/VTK exports. Access it programmatically as detailed in the [Data Types documentation](README_DATATYPES.md).
