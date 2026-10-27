@@ -279,6 +279,12 @@ split_and_compute_surface_sp(const SpherePack& sp, const Eigen::Vector3f& normal
     }
 
     float voxel_size = (max_corner - min_corner).maxCoeff() / static_cast<float>(local_config.div);
+    
+    if (local_config.minimum_radius_real > 0.0f) {
+    int new_min_vox = static_cast<int>(std::ceil(local_config.minimum_radius_real / voxel_size));
+    local_config.min_radius_vox = (new_min_vox > 1) ? new_min_vox : local_config.min_radius_vox;
+	}
+
     if (voxel_size <= 0) voxel_size = 1.0f;
     Eigen::Vector3f origin = min_corner.array() - local_config.padding * voxel_size;
     Eigen::Array3i dims = ((max_corner - min_corner).array() / voxel_size + 2 * local_config.padding).cast<int>();
