@@ -9,25 +9,23 @@
     <img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square"
          alt="License: MIT">
   </a>
-  <a href="#citation">
-    <img src="https://img.shields.io/badge/DOI-pending-lightgrey.svg?style=flat-square"
-         alt="DOI: [pending](https://doi.org/10.1016/j.powtec.2026.123162)">
+  <a href="https://doi.org/10.1016/j.powtec.2026.123162">
+    <img src="https://img.shields.io/badge/DOI-10.1016%2Fj.powtec.2026.123162-blue.svg?style=flat-square" alt="DOI">
   </a>
 </p>
 ---
 
 # GEMSS - GEnerator of Multi-Sphere Shapes
 
-`GEMSS` creates overlapping-sphere representations of arbitrary 3D geometries based on voxelized Euclidean distance transforms (EDT) and feature-enhanced distance transform (FEDT) fields. It equips the output with physical properties—including Center of Mass (CoM), Inertia Tensors, and Principal Moments—necessary for Discrete Element Method (DEM) and Molecular Dynamics (MD) simulations.
+`GEMSS` is a header only C++17 library that creates overlapping-sphere representations of arbitrary 3D geometries based on voxelized Euclidean distance transforms (EDT) and feature-enhanced distance transform (FEDT) fields. It equips the output with physical properties—including Center of Mass (CoM), Inertia Tensors, and Principal Moments—necessary for Discrete Element Method (DEM) and Molecular Dynamics (MD) simulations.
 
-**This repository is a fork of the [Python implementation by Felix Buchele](https://github.com/FelixBuchele/multisphere).**
 
 ## Features
 
 - Multisphere reconstruction according to MSS algorithm [1] from:
   - Triangle meshes (binary STL) 
   - Binary voxel grids
-- Physical Property Computation: Automated calculation of volume, Center of Mass (CoM), inertia tensors, and principal axes directly from the multisphere union or the target geometry.
+- Physical Property Computation: Automated calculation of volume, Center of Mass (CoM), inertia tensors, and principal axes directly from the multisphere union or the target geometry, along with principal extents (L ≥ I ≥ S) calculated from the reconstructed sphere geometry.
 - Topology Filtering: Built-in pruning of isolated sphere networks to guarantee continuous rigid-body representations.
 - Multiple termination criteria:
   - Shape precision
@@ -36,9 +34,11 @@
 - Robust Generalized Winding Number voxelization (via libigl)
 - OpenMP parallelization for voxelization and field processing
 - Export formats:
+  - JSON (SpherePack)
   - CSV (sphere centers & radii)
   - VTK (visualization)
   - STL (mesh export)
+
 
 ## Scientific Background
 
@@ -48,17 +48,17 @@ The MSS algorithm is based on:
 - Iterative residual correction using the Feature-Enhanced Distance Transform (FEDT)
 - Termination by shape accuracy, minimum radius, or maximum sphere count
 
-The use of FEDT preserves the medial axis of the geometry and avoids the major drawbacks of greedy sphere removal methods, such as spurious small spheres and symmetry violations.
+The use of FEDT preserves the medial axis of the geometry and avoids the major drawbacks of greedy sphere removal methods, such as spurious small spheres and symmetry violations [2].
 
 ---
 
 ## C++ Implementation
 
-The C++ implementation is designed for high-performance integration. It is a **pure header-only** library. All necessary third-party mathematics and geometry processing headers are bundled in the `thirdparty/` directory, with the sole exception of Eigen.
+The C++ implementation is designed for high-performance integration. It is a **header-only** library. All necessary third-party mathematics and geometry processing headers are bundled in the `thirdparty/` directory, with the sole exception of Eigen.
 
 ### ⚠️ Critical Performance Requirement
 
-Because `GEMSS` relies heavily on massive voxel-space iterations and 3D distance transforms, **you must compile your code with aggressive optimizations enabled (`-O3` on GCC/Clang, or `/Ox` on MSVC)**. 
+Because `GEMSS` relies heavily on massive voxel-space iterations and 3D distance transforms, **you should compile your code with aggressive optimizations enabled (`-O3` on GCC/Clang, or `/Ox` on MSVC)**. 
 
 Without optimizations, the compiler will not inline the geometry math or vectorize the spatial hashing loops. Processing 1,000,000 query points takes approximately **10 seconds** with `-O3`, but will take **over 10 minutes** without it. Do not evaluate the performance of this library in an unoptimized state.
 
@@ -104,8 +104,8 @@ add_executable(my_app main.cpp)
 
 # Link GEMSS header-only library
 # GEMSS handles all include paths internally
-# Link Eigen (GEMSS is header-only)
-target_link_libraries(my_app PRIVATE multisphere_lib Eigen3::Eigen)
+# Link GEMSS (includes Eigen and configured OpenMP dependencies)
+target_link_libraries(my_app PRIVATE GEMSS::GEMSS)
 
 # FORCE OPTIMIZATIONS for your executable (Critical!)
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
@@ -168,7 +168,7 @@ using namespace GEMSS;
 
 int main() {
   // 1. Load Mesh
-  FastMesh mesh = load_mesh_fast("example_mesh.stl");
+  STLMesh mesh = load_mesh("example_mesh.stl");
 
   // 2. Set up configuration
   MultisphereConfig config;
@@ -176,7 +176,7 @@ int main() {
   config.padding = 2;                 // Grid padding
   config.min_radius_vox = 8;          // Minimum sphere radius in voxels
   config.precision_target = 0.99;     // Target precision
-  config.min_center_distance_vox = 4; // Minimum center distance in voxels
+  config.min_center_distance_rel = 1.4f; // Relative sphere center spacing
   config.max_spheres = 100;           // Maximum number of spheres
   config.show_progress = true;        // Show progress output
   config.confine_mesh = false;        // Do not confine spheres to mesh boundary
@@ -187,9 +187,11 @@ int main() {
   SpherePack sp = multisphere_from_mesh(mesh, config);
 
   // 4. Access Computed Physics Properties
-  std::cout << "Reconstruction Volume: " << sp.volume << "\n";
+  std::cout << "Mass: " << sp.mass << "\n";
   std::cout << "Center of Mass:\n" << sp.center_of_mass << "\n";
   std::cout << "Inertia Tensor:\n" << sp.inertia_tensor << "\n";
+  std::cout << "Principal Extents (L, I, S): "
+          << sp.principal_extents.transpose() << "\n";
 
   // 5. Export
   export_to_csv(sp, "results.csv");
@@ -203,8 +205,8 @@ int main() {
 
 ## Input/Output
 
-- **Mesh loading:** STL (binary) files via `load_mesh_fast`
-- **Export:** CSV, VTK, STL (no runtime visualization; use external tools for viewing)
+- **Mesh loading:** STL (binary) files via `load_mesh`
+- **Export:** JSON, CSV, VTK, STL (no runtime visualization; use external tools for viewing)
 
 ### Visualization
 
@@ -212,8 +214,11 @@ You can visualize the output files using external tools such as [ParaView](https
 No runtime visualization is included in this library.
 
 
-### Details of the config 
-[📖 Documentation](./README_CONFIG.md)
+### Documentation
+
+- [Configuration](./README_CONFIG.md) — Configuration parameters and defaults.
+- [Data Types](./README_DATATYPES.md) — GEMSS data structures, including `principal_extents`.
+- [Examples](./README_EXAMPLES.md) — C++ and Python examples.
 
 ---
 
@@ -250,6 +255,9 @@ Contributors: Felix Buchele, Patric Müller, Thorsten Pöschel
 
 Algorithm :
 Felix Buchele, Thorsten Pöschel, Patric Müller. *Multi-sphere shape generator for DEM simulations of complex-shaped particles*. Powder Technology, 480, 122635 (2026). https://doi.org/10.1016/j.powtec.2026.122635
+
+Proof of Medial Axis:
+Arash Moradian, Felix Buchele, Thorsten Poeschel. Why the Multi-Sphere Shape Generator Works: Medial-Axis Placement of Spheres. arXiv preprint arXiv:2608.15457 (2026). https://arxiv.org/abs/2608.15457
 
 Implementation : 
 A. Moradian, F. Buchele, P. Müller, T. Pöschel. *GEMSS: A C++ library for multi-sphere modeling in DEM simulations*. Powder Technology, 123162 (2026). https://doi.org/10.1016/j.powtec.2026.123162

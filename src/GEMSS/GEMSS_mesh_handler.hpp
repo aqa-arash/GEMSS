@@ -67,7 +67,6 @@ inline VoxelGrid<uint8_t> mesh_to_binary_grid(const STLMesh& mesh, MultisphereCo
     if (min_extent <= 1e-6) min_extent = (extents.maxCoeff() > 0 ? extents.maxCoeff() : 1.0f);
     float voxel_size = min_extent / static_cast<float>(config.div);
 
-
     int nx = std::ceil(extents.x() / voxel_size) + 2 * config.padding;
     int ny = std::ceil(extents.y() / voxel_size) + 2 * config.padding;
     int nz = std::ceil(extents.z() / voxel_size) + 2 * config.padding;

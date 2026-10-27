@@ -278,6 +278,7 @@ inline void print_sphere_pack_info(const SpherePack& sp) {
     std::cout << "      Bounding radius: " << sp.bounding_radius << " units" << std::endl;
     std::cout << "      Principal moments: " << sp.principal_moments.transpose() << " units^5" << std::endl;
     std::cout << "      Principal axes:\n" << sp.principal_axes << std::endl;
+    std::cout << "      Principal extents: " << sp.principal_extents.transpose() << " units" << std::endl; 
 
 }
 
@@ -359,6 +360,13 @@ inline void export_sphere_pack_json(const SpherePack& sp, const std::string& out
     write_num(sp.principal_moments.y()); f << ", ";
     write_num(sp.principal_moments.z());
     f << "]\n";
+
+    // principal_extents 
+    f << " \"principal_extents\": [";
+    write_num(sp.principal_extents.x()); f << ", ";
+    write_num(sp.principal_extents.y()); f << ", ";
+    write_num(sp.principal_extents.z());
+    
 
     f << "}\n";
     f.close();
@@ -537,6 +545,7 @@ inline SpherePack import_vtk(const std::string& path) {
 
     set_vec("center_of_mass", sp.center_of_mass);
     set_vec("principal_moments", sp.principal_moments);
+    set_vec("principal_extents", sp.principal_extents);
 
     auto set_mat = [&](const std::string& key, Eigen::Matrix3f& target) {
         std::vector<float> v = extract_numbers(key, 9);
