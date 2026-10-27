@@ -1,0 +1,105 @@
+# GEMSS data types
+
+[Main README](README.md) · [Configuration](README_CONFIG.md) · [Examples](README_EXAMPLES.md)
+
+Types live in [`GEMSS_datatypes.hpp`](src/GEMSS/GEMSS_datatypes.hpp), namespace `GEMSS`. Include `GEMSS-interface.h` for the full API.
+
+## `STLMesh`
+
+| Member | Type | Meaning |
+| --- | --- | --- |
+| `vertices` | row-major dynamic×3 Eigen matrix of `float` | Physical vertex coordinates. |
+| `triangles` | row-major dynamic×3 Eigen matrix of `int` | Zero-based vertex indices for triangular faces. |
+| `is_empty()` | `bool` | Checks for zero vertex elements; does not validate topology. |
+
+`load_mesh(path)` reads binary STL; `save_mesh_to_stl(mesh,path)` writes it. `grid_to_mesh` produces a blocky voxel-face surface, not an analytic sphere union.
+
+## `SpherePack`
+
+Construct with `SpherePack(centers,radii)` or the empty default constructor. Mismatched center/radius counts throw `std::invalid_argument`. The constructor does not compute physics or enforce positive radii.
+
+| Member | Type / initial value | Meaning |
+| --- | --- | --- |
+| `centers` | `Eigen::MatrixX3f`, empty | N physical centers, one per row. |
+| `radii` | `Eigen::VectorXf`, empty | N physical radii. |
+| `is_2d` | `bool`, false | Planar pack marker. |
+| `precision` | `float`, 0 | Dimensionless voxel Dice score, not a volume. |
+| `density` | `float`, 1 | Uniform material density. |
+| `mass` | `float`, 0 | Mass from the selected occupancy mask. |
+| `bounding_radius` | `float`, 0 | Maximum sphere-center distance from CoM plus radius; planar mode uses XY distance. |
+| `center_of_mass` | `Eigen::Vector3f`, zero | Physical CoM of the selected mask. |
+| `inertia_tensor` | `Eigen::Matrix3f`, zero | Inertia about CoM in global axes, in mass×length². |
+| `principal_axes` | `Eigen::Matrix3f`, identity | 3D inertia eigenvectors as columns, right-handed. |
+| `principal_moments` | `Eigen::Vector3f`, zero | 3D eigenvalues ascending, paired with principal-axis columns. |
+| `principal_extents` | `Eigen::Vector3f`, zero | Full principal-frame sphere-union lengths, descending. |
+
+Physical units: mass is density × length³ in 3D or density × length² in 2D; inertia and principal moments have units of mass × length². Centers, radii, bounding radius, and principal extents are lengths. Precision is dimensionless.
+
+`num_spheres()` returns the radius count. `min_radius()` and `max_radius()` return radius extrema, or zero for an empty pack. There is no `volume` field: with positive density, `mass/density` gives volume in 3D or area in 2D.
+
+Physics is populated in modes 1 and 2. Editing centers/radii does not automatically update properties. Mask-based values describe reconstructed occupancy in mode 1 and target occupancy in mode 2, not exact analytic integration of intersecting spheres.
+
+### Principal Extents (`principal_extents`)
+
+The `principal_extents` property stores the full bounding lengths of the sphere pack along its principal axes. For centers `c_i`, radii `r_i`, Center of Mass `c`, and principal-axis matrix `Q`, both the 2D planar and 3D routines compute the extents as follows:
+
+```text
+u_i = transpose(Q) * (c_i - c)
+min_j = min_i(u_i[j] - r_i)
+max_j = max_i(u_i[j] + r_i)
+extent_j = max_j - min_j
+principal_extents = sort_descending(extent_0, extent_1, extent_2)
+```
+
+Index 0 represents L (longest), 1 represents I (intermediate), and 2 represents S (shortest), measured in physical length units. A single sphere of radius `r` yields extents of `[2r, 2r, 2r]`.
+
+The `principal_extents` vector is sorted in descending order independently of the `principal_axes` and `principal_moments` matrices. As a result, extent index `j` corresponds strictly to the length ranking (L, I, S) and operates independently of the inertia axis columns. The calculations project the spheres onto the inertia-based principal axes to establish an oriented bounding box based on the mass distribution. In mode 2, the axes derive from the target-mask inertia, while the extents bound the resulting generated spheres.
+
+```cpp
+auto pack = GEMSS::multisphere_from_mesh(mesh, config); // physics 1 or 2
+float L = pack.principal_extents(0);
+float I = pack.principal_extents(1);
+float S = pack.principal_extents(2);
+```
+
+For nondegenerate packs, the extents provide direct inputs for calculating dimensionless shape descriptors:
+
+```cpp
+float elongation = I / L;
+float flatness   = S / I;
+float aspect     = L / S;
+```
+
+
+### Planar physics
+
+A single z-slice selects area-based mass and polar moment `Izz`. The inertia matrix is zero except `(2,2)`; `principal_moments.z()` stores `Izz` and axes remain identity. CoM z is `grid.origin.z()`. Returned sphere-center z still follows the general conversion, `origin.z()+0.5*voxel_size`; use XY geometry for planar distances.
+
+## `VoxelGrid<T>`
+
+```cpp
+GEMSS::VoxelGrid<uint8_t> grid(64, 64, 64, 0.1f);
+grid.sphere_kernel(32, 32, 32, 12); // voxel center and radius
+auto field = grid.distance_transform();
+auto planar = GEMSS::VoxelGrid<uint8_t>::make_2d(64, 64, 0.1f);
+```
+
+| Member / operation | Meaning |
+| --- | --- |
+| `data` | Zero-initialized flat `std::vector<T>`; use `uint8_t` occupancy for reconstruction and `float` for scalar fields. |
+| `shape` | `std::array<size_t,3>` with `{nx,ny,nz}`. |
+| `voxel_size` | Physical cubic voxel edge length. |
+| `origin` | Physical lower grid corner (`Eigen::Vector3f`). |
+| `grid(x,y,z)` | Unchecked element access; z defaults to 0. |
+| `nx()`, `ny()`, `nz()` | Axis dimensions. |
+| `make_2d(nx,ny,size,origin)` | Named constructor with `nz=1`. |
+| `is_2d()` | True when `nz==1`. |
+| `distance_transform(binary_mode=true)` | Binary interior EDT, returned as a float grid with preserved metadata. |
+| `sphere_kernel(cx,cy,cz,radius,fill_value=1)` | Fill lattice samples inside a sphere, clipped to grid bounds; ignore nonpositive radii. |
+
+Storage index is `x*(ny*nz)+y*nz+z`, so z is contiguous. Physical cell centers are `origin+(index+0.5)*voxel_size` on each axis. Occupancy is positive inside, zero outside.
+
+`distance_transform()` uses unit spacing: values are in **voxel units**. Multiply by `voxel_size` for physical distance. Single-slice input uses 2D EDT. Nonbinary 3D mode is not implemented; the single-slice path always uses a binary mask.
+
+
+Implementation references: [reconstruction](src/GEMSS/GEMSS_reconstruction.hpp), [physics](src/GEMSS/GEMSS_physics_computation.hpp), [I/O](src/GEMSS/GEMSS_io.hpp), [voxel processing](src/GEMSS/GEMSS_voxel_processing.hpp).
