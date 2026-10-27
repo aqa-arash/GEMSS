@@ -67,23 +67,6 @@ inline VoxelGrid<uint8_t> mesh_to_binary_grid(const STLMesh& mesh, MultisphereCo
     if (min_extent <= 1e-6) min_extent = (extents.maxCoeff() > 0 ? extents.maxCoeff() : 1.0f);
     float voxel_size = min_extent / static_cast<float>(config.div);
 
-    if (config.minimum_radius_real > 0.0f) {
-        int min_radius_vox = static_cast<int>(std::ceil(config.minimum_radius_real / voxel_size));
-        if (min_radius_vox > 1) {
-            config.min_radius_vox = min_radius_vox;
-            #ifdef MULTISPHERE_DEBUG
-                std::cout << "[Config] Updated min_radius_vox to " << config.min_radius_vox 
-                          << " based on minimum_radius_real and voxel size." << std::endl;
-            #endif
-        }
-        else {
-            #ifdef MULTISPHERE_DEBUG
-                std::cout << "[Config] minimum_radius_real is smaller than voxel size, keeping min_radius_vox at " 
-                          << config.min_radius_vox << " voxels." << std::endl;
-            #endif
-        }
-    }
-
     int nx = std::ceil(extents.x() / voxel_size) + 2 * config.padding;
     int ny = std::ceil(extents.y() / voxel_size) + 2 * config.padding;
     int nz = std::ceil(extents.z() / voxel_size) + 2 * config.padding;
