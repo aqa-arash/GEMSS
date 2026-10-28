@@ -158,7 +158,12 @@ split_sp(const SpherePack& sp, const Eigen::Vector3f& normal, const Eigen::Vecto
         max_corner = max_corner.cwiseMax(c + Eigen::Vector3f::Ones() * r);
     }
     
-    float voxel_size = (max_corner - min_corner).maxCoeff() / static_cast<float>(config.div > 0 ? config.div : 100);
+    // Same base as mesh_to_binary_grid: smallest extent / div (in-plane only for a planar pack)
+    Eigen::Vector3f extents = max_corner - min_corner;
+    float min_extent = sp.is_2d ? std::min(extents.x(), extents.y()) : extents.minCoeff();
+    if (min_extent <= 1e-6f) min_extent = (extents.maxCoeff() > 0 ? extents.maxCoeff() : 1.0f);
+    float voxel_size = min_extent / static_cast<float>(config.div > 0 ? config.div : 100); 
+
     if (voxel_size <= 0) voxel_size = 1.0f;
     Eigen::Vector3f origin = min_corner.array() - config.padding * voxel_size;
     Eigen::Array3i dims = ((max_corner - min_corner).array() / voxel_size + 2 * config.padding).cast<int>();
@@ -278,7 +283,12 @@ split_and_compute_surface_sp(const SpherePack& sp, const Eigen::Vector3f& normal
         max_corner = max_corner.cwiseMax(c + Eigen::Vector3f::Ones() * r);
     }
 
-    float voxel_size = (max_corner - min_corner).maxCoeff() / static_cast<float>(local_config.div);
+    // Same base as mesh_to_binary_grid: smallest extent / div (in-plane only for a planar pack)
+    Eigen::Vector3f extents = max_corner - min_corner;
+    float min_extent = sp.is_2d ? std::min(extents.x(), extents.y()) : extents.minCoeff();
+    if (min_extent <= 1e-6f) min_extent = (extents.maxCoeff() > 0 ? extents.maxCoeff() : 1.0f);
+    float voxel_size = min_extent / static_cast<float>(config.div > 0 ? config.div : 100);   
+
 
     if (voxel_size <= 0) voxel_size = 1.0f;
     Eigen::Vector3f origin = min_corner.array() - local_config.padding * voxel_size;
