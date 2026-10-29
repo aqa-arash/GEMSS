@@ -727,7 +727,7 @@ private:
      *
      * While the weight is unchanged, the field changes only where the reconstruction distance changed, so only
      * those blocks and their neighbours are re-tested (peak_local_max_3d_incremental). A full search runs on the
-     * first call, after a weight change, after a full distance-transform pass, or when most blocks changed.
+     * first call, after a weight change, after the first distance transform, or when most blocks changed.
      *
      * @param field Summed field of this iteration.
      * @param distance_updated The reconstruction distance was updated since the last search.

@@ -12,7 +12,8 @@
  *   - pass 2: the y-lines on which A changed;
  *   - pass 3: the z-lines on which B changed.
  * A recomputed line uses the same arithmetic as the full transform and a skipped line has an unchanged input,
- * so the result is bit-identical to a full transform.
+ * so the result is bit-identical to a full transform. Every recomputed line is compared with its stored values,
+ * so the update always reports where the distance changed.
  *
  * Define GEMSS_EDT_VERIFY to compare every update with a full transform (debugging only).
  *
@@ -42,12 +43,13 @@ namespace GEMSS {
  *
  * Usage: mark the x-line (y, z) of every voxel that changes from 0 to 1 with mark_line(), then call update().
  * The mask must not change in any other way between two updates; otherwise call invalidate() first.
- * After each update, changed_blocks() flags the blocks (block^3 voxels) in which a distance changed, or
- * all_changed() is true when a full pass ran. Later stages use this to limit their work to changed regions.
+ * After each update, changed_blocks() flags the blocks (block^3 voxels) in which a distance changed; only the
+ * first update (or the first after invalidate()) reports all_changed() instead. Later stages use this to limit
+ * their work to changed regions.
  */
 class IncrementalEDT {
 public:
-    /// A pass with a larger fraction of dirty lines is recomputed in full.
+    /// If more than this fraction of the x-lines is dirty, pass 1 sweeps the whole grid plane by plane.
     double full_fraction = 0.5;
 
     /**
@@ -71,7 +73,7 @@ public:
     /// Forgets the stored passes, so that the next update is a full transform.
     void invalidate() { valid_ = false; }
 
-    /// True if the last update ran a full pass; changed_blocks() is then not filled.
+    /// True if the last update was a complete transform (first update); changed_blocks() is then not filled.
     bool all_changed() const { return all_changed_; }
 
     /// Flags of the blocks in which the last update changed a distance, indexed (bx * nby + by) * nbz + bz.
@@ -105,9 +107,11 @@ public:
         if (valid_) {
             update_lines(m, c);
         } else {
+            // Stored values may be stale: recompute every line (writing only differing values is still complete).
             full_pass_x(m);
-            full_pass_y();
-            full_pass_z(c);
+            update_y_lines(all_lines(dirty_y_.size()));
+            update_z_lines(all_lines(dirty_z_.size()), c);
+            all_changed_ = true;
             valid_ = true;
         }
         std::fill(dirty_x_.begin(), dirty_x_.end(), 0);
@@ -123,7 +127,7 @@ private:
     bool valid_ = false;                  ///< a_, b_ and the caller's distance field hold the last transform
     int block_;                           ///< block edge length (voxels)
     std::array<int, 3> block_grid_;       ///< number of blocks along x, y, z
-    bool all_changed_ = false;            ///< the last update ran a full pass
+    bool all_changed_ = false;            ///< the last update was a complete transform
     std::vector<uint8_t> changed_blocks_; ///< blocks in which the last update changed a distance
     std::vector<float> a_;                ///< pass-1 output (squared distance along x)
     std::vector<float> b_;                ///< pass-2 output (squared distance in the xy-slice)
@@ -143,12 +147,14 @@ private:
         return indices;
     }
 
-    /// True if `count` lines out of `total` are too many for a line-by-line update.
-    bool too_many(size_t count, size_t total) const { return static_cast<double>(count) > full_fraction * total; }
+    /// Indices 0 .. count-1.
+    static std::vector<int> all_lines(size_t count) {
+        std::vector<int> indices(count);
+        for (size_t i = 0; i < count; ++i) indices[i] = static_cast<int>(i);
+        return indices;
+    }
 
-    // ---- Full passes (same arithmetic as euclidean_distance_transform) ----
-
-    /// Pass 1 on every x-line: a_ = squared distance along x.
+    /// Pass 1 on every x-line, sweeping the grid plane by plane: a_ = squared distance along x.
     void full_pass_x(const uint8_t* m) {
         const int nx = nx_, ny = ny_, nz = nz_;
         const long sx = stride_x_;
@@ -181,66 +187,32 @@ private:
         }
     }
 
-    /// Pass 2 on every y-line: b_ = lower envelope of a_ along y.
-    void full_pass_y() {
-        const int nx = nx_, ny = ny_, nz = nz_;
-        const long sx = stride_x_;
-        std::memcpy(b_.data(), a_.data(), a_.size() * sizeof(float));
-        #pragma omp parallel
-        {
-            edt_detail::EnvelopeScratch scratch(std::max(ny, nz));
-            #pragma omp for collapse(2) schedule(dynamic, 16)
-            for (int x = 0; x < nx; ++x)
-                for (int z = 0; z < nz; ++z)
-                    edt_detail::envelope_1d(b_.data() + x * sx + z, ny, nz, true, false, scratch);
-        }
-    }
-
-    /// Pass 3 on every z-line: c = sqrt of the lower envelope of b_ along z. Marks the whole field as changed.
-    void full_pass_z(float* c) {
-        all_changed_ = true;
-        const int nx = nx_, ny = ny_, nz = nz_;
-        const long sx = stride_x_;
-        std::memcpy(c, b_.data(), b_.size() * sizeof(float));
-        #pragma omp parallel
-        {
-            edt_detail::EnvelopeScratch scratch(std::max(ny, nz));
-            #pragma omp for collapse(2) schedule(dynamic, 16)
-            for (int x = 0; x < nx; ++x)
-                for (int y = 0; y < ny; ++y)
-                    edt_detail::envelope_1d(c + x * sx + static_cast<long>(y) * nz, nz, 1, nz > 1, true, scratch);
-        }
-    }
-
     // ---- Line-by-line update ----
 
-    /// Recomputes the lines whose input changed, pass by pass; falls back to full passes when too many are dirty.
+    /**
+     * @brief Recomputes the lines whose input changed, pass by pass.
+     *
+     * Passes 2 and 3 always run on exactly the dirty lines: when most lines are dirty, the list is in grid order
+     * and costs about as much as a full pass, and the comparison still reports what changed. Pass 1 sweeps the
+     * whole grid when many x-lines are dirty, since single x-lines are strided in memory; every y-line then
+     * counts as dirty.
+     */
     void update_lines(const uint8_t* m, float* c) {
         const std::vector<int> x_lines = set_indices(dirty_x_);
         if (x_lines.empty()) return;  // mask unchanged
-        if (too_many(x_lines.size(), dirty_x_.size())) {
+        if (static_cast<double>(x_lines.size()) > full_fraction * dirty_x_.size()) {
             full_pass_x(m);
-            full_pass_y();
-            full_pass_z(c);
-            return;
+            std::fill(dirty_y_.begin(), dirty_y_.end(), 1);
+        } else {
+            update_x_lines(m, x_lines);
         }
-        update_x_lines(m, x_lines);
 
         const std::vector<int> y_lines = set_indices(dirty_y_);
         if (y_lines.empty()) return;
-        if (too_many(y_lines.size(), dirty_y_.size())) {
-            full_pass_y();
-            full_pass_z(c);
-            return;
-        }
         update_y_lines(y_lines);
 
         const std::vector<int> z_lines = set_indices(dirty_z_);
         if (z_lines.empty()) return;
-        if (too_many(z_lines.size(), dirty_z_.size())) {
-            full_pass_z(c);
-            return;
-        }
         update_z_lines(z_lines, c);
     }
 
