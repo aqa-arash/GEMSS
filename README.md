@@ -224,7 +224,7 @@ No runtime visualization is included in this library.
 
 ## License
 
-The core of this project is licensed under the MIT License. However, it includes third-party components located in the third_party/ directory that are subject to the LGPLv3 and MPLv2 licenses.
+The core of this project is licensed under the MIT License. However, it includes third-party components located in the third_party/ directory that are subject to the MPLv2 license.
 
 See the `LICENSE` file for full details.
 
@@ -234,13 +234,7 @@ See the `LICENSE` file for full details.
 | :--- | :--- | :--- |
 | **Eigen** | MPL2 | C++ Math |
 | **libigl** | MPL2 | C++ Voxelization |
-| **edt** | LGPL3 | C++ Distance Transform |
 
-If you are building a commercial or closed-source application and wish to avoid LGPLv3 obligations in your final executable, you have two options:
-
-    Dynamic Linking: Do not use the header-only version of the EDT component. Instead, compile the EDT code into a separate shared library (.so or .dll) and link to it dynamically.
-
-    Replace the Backend: You can replace the files in third_party/edt/ with any other EDT implementation that matches the internal API but carries a permissive license. Alternatively you can modify the API usage in GEMSS_datatypes.hpp -> VoxelGrid -> distance_transform().
 
 ## Author
 
