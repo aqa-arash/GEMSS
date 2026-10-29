@@ -101,11 +101,13 @@ inline void euclidean_distance_transform(const T* mask, int nx, int ny, int nz, 
         for (int y = 0; y < ny; ++y) {
             std::fill(run.begin(), run.end(), 0.0f);  // background just before x = 0
             for (int x = 0; x < nx; ++x) {
-                const T* m = mask + x * sx + static_cast<long>(y) * nz;
-                float* o = out + x * sx + static_cast<long>(y) * nz;
+                const T* __restrict m = mask + x * sx + static_cast<long>(y) * nz;
+                float* __restrict o = out + x * sx + static_cast<long>(y) * nz;
+                float* __restrict r = run.data();
                 for (int z = 0; z < nz; ++z) {
-                    run[z] = (m[z] > T(0)) ? run[z] + 1.0f : 0.0f;
-                    o[z] = run[z];
+                    const int foreground = m[z] > T(0);  // branch-free so the loop vectorizes
+                    r[z] = (r[z] + 1.0f) * static_cast<float>(foreground);
+                    o[z] = r[z];
                 }
             }
             std::fill(run.begin(), run.end(), 0.0f);  // background just after x = nx - 1
