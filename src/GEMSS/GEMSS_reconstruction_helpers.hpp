@@ -47,7 +47,7 @@ inline Eigen::MatrixX4f peak_local_max_3d(
     const VoxelGrid<float>& field,
     const VoxelGrid<float>& original_distance,
     const VoxelGrid<uint8_t>& overlap_mask,
-    MultisphereConfig config)
+    const MultisphereConfig& config)
 {
     std::vector<Eigen::Vector4f> peaks;
     const int nx = (int)field.nx();
@@ -79,11 +79,10 @@ inline Eigen::MatrixX4f peak_local_max_3d(
     #pragma omp parallel
     {
         std::vector<Eigen::Vector4f> local_peaks;
-        #pragma omp for collapse(2)
+        #pragma omp for collapse(2) schedule(dynamic, 16)
         for (int x = 0; x < nx; ++x) {
             for (int y = 0; y < ny; ++y) {
                 const long row = x * sy + y * sz;
-                const bool interior_xy = x >= w && x < nx - w && y >= w && y < ny - w;
                 for (int z = 0; z < nz; ++z) {
                     const long i = row + z;
                     const float radius = D[i];
@@ -93,23 +92,21 @@ inline Eigen::MatrixX4f peak_local_max_3d(
                     if (M[i] > 0) continue; // Skip if within overlap region
 
                     bool is_max = true;
-                    if (interior_xy && z >= wz && z < nz - wz) {
-                        // Whole window in bounds: linear offsets, no bound checks
+                    if (radius > w) {
+                        // D > w implies the whole window is inside the grid (black-border EDT): no bound checks
                         const float* c = F + i;
-                        for (const long off : linear) {
+                        for (const long off : linear)
                             if (c[off] > val) { is_max = false; break; }
-                        }
                     } else {
-                        // Boundary layer: same order, with bound checks
+                        // Only reachable when min_radius_vox <= search_window: checked offsets
                         for (const auto& o : offsets) {
                             const int ix = x + o.x(), iy = y + o.y(), iz = z + o.z();
                             if (ix < 0 || ix >= nx || iy < 0 || iy >= ny || iz < 0 || iz >= nz) continue;
                             if (F[ix * sy + iy * sz + iz] > val) { is_max = false; break; }
                         }
                     }
-                    if (is_max) {
+                    if (is_max)
                         local_peaks.push_back(Eigen::Vector4f((float)x, (float)y, (float)z, radius + config.radius_offset_vox));
-                    }
                 }
             }
         }
