@@ -26,6 +26,7 @@
 #include "GEMSS_config.hpp"
 #include "GEMSS_io.hpp"
 #include "GEMSS_voxel_processing.hpp"
+#include "GEMSS_edt_incremental.hpp"
 
 namespace GEMSS {
 
@@ -406,6 +407,200 @@ inline void append_sphere_table(
 
 
 /**
+ * @brief Iterative multisphere solver.
+ *
+ * Owns the solver grids and passes change information between the stages instead of rescanning the grid:
+ *  - rasterizing new spheres into the reconstruction mask records every voxel that changes from 0 to 1,
+ *    marks its EDT line for the incremental distance transform and updates the Dice counters;
+ *  - the distance transform of the reconstruction is updated incrementally from those lines;
+ *  - the precision (Dice) comes from the counters.
+ * Results are bit-identical to recomputing every stage on the full grid.
+ */
+class MultisphereSolver {
+public:
+    MultisphereSolver(const VoxelGrid<float>& original_distance,
+                      const VoxelGrid<uint8_t>& target,
+                      VoxelGrid<uint8_t>& recon_mask,
+                      const MultisphereConfig& config)
+        : original_distance_(original_distance), target_(target), recon_mask_(recon_mask), config_(config),
+          overlap_mask_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
+          recon_distance_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
+          summed_field_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
+          recon_edt_(static_cast<int>(target.nx()), static_cast<int>(target.ny()), static_cast<int>(target.nz()))
+    {
+        if (recon_mask.shape != target.shape || original_distance.shape != target.shape) {
+            throw std::invalid_argument("MultisphereSolver: grid shapes must match.");
+        }
+        // Dice counters of the initial reconstruction mask
+        size_t target_vol = 0, recon_vol = 0, intersection = 0;
+        #pragma omp parallel for reduction(+:target_vol, recon_vol, intersection)
+        for (size_t i = 0; i < target.data.size(); ++i) {
+            const bool t = target.data[i] > 0;
+            const bool r = recon_mask.data[i] > 0;
+            target_vol += t;
+            recon_vol += r;
+            intersection += (t && r);
+        }
+        target_vol_ = target_vol;
+        recon_vol_ = recon_vol;
+        intersection_ = intersection;
+    }
+
+    /// Runs the solver and returns the sphere table (voxel units); recon_mask holds the reconstruction.
+    Eigen::MatrixX4f run() {
+        Eigen::MatrixX4f sphere_table = config_.initial_sphere_table;
+
+        // Solver State
+        int max_iter = config_.persistence, iter = 1, prev_count = 0;
+        float weight_factor = 1.0f;
+        bool peaks_found = false;
+
+        // If we start with an existing table, initialize the masks immediately.
+        if (sphere_table.rows() > 0) {
+            rasterize_reconstruction(sphere_table);
+            prev_count = sphere_table.rows();
+            rasterize_overlap(sphere_table);
+            peaks_found = true;
+        }
+
+        while (iter <= max_iter) {
+            if (config_.max_spheres > 0 && sphere_table.rows() >= config_.max_spheres) {
+                if (config_.show_progress) std::cout << "Reached maximum number of spheres. Terminating." << std::endl;
+                break;
+            }
+
+            // A. Update Fields & Check Precision
+            if (sphere_table.rows() > 0) {
+                if (peaks_found) {
+                    iter = 1;
+                    float precision = static_cast<float>(this->precision());
+                    if (config_.show_progress) {
+                        std::cout << " -Weight = " << weight_factor << " -Total spheres = " << sphere_table.rows() << " -Precision = " << precision << std::endl;
+                    }
+                    if (config_.precision_target < precision) {
+                        if (config_.show_progress) std::cout << "Reached target precision. Terminating." << std::endl;
+                        break;
+                    }
+                    rasterize_overlap(sphere_table.block(prev_count, 0, sphere_table.rows() - prev_count, 4));
+                    recon_edt_.update(recon_mask_, recon_distance_);
+                }
+                update_field(weight_factor);
+            } else {
+                summed_field_.data = original_distance_.data;
+            }
+
+            // B. Peak Detection & Filtering
+            Eigen::MatrixX4f peaks = peak_local_max_3d(summed_field_, original_distance_, overlap_mask_, config_);
+            peaks = filter_and_shift_peaks(peaks, sphere_table, summed_field_, config_);
+
+            // C. Iteration Flow Control
+            if (peaks.rows() == 0) {
+                peaks_found = false;
+                ++iter;
+                ++weight_factor;
+                continue;
+            }
+
+            peaks_found = true;
+            prev_count = sphere_table.rows();
+            append_sphere_table(sphere_table, peaks, config_.max_spheres);
+            rasterize_reconstruction(sphere_table.block(prev_count, 0, sphere_table.rows() - prev_count, 4));
+        }
+
+        return sphere_table;
+    }
+
+private:
+    const VoxelGrid<float>& original_distance_;
+    const VoxelGrid<uint8_t>& target_;
+    VoxelGrid<uint8_t>& recon_mask_;
+    MultisphereConfig config_;
+
+    VoxelGrid<uint8_t> overlap_mask_;
+    VoxelGrid<float> recon_distance_;  ///< distance transform of the reconstruction, kept by recon_edt_
+    VoxelGrid<float> summed_field_;
+    IncrementalEDT recon_edt_;
+
+    size_t target_vol_ = 0, recon_vol_ = 0, intersection_ = 0;  ///< Dice counters
+
+    /**
+     * @brief Renders spheres into the reconstruction mask (same voxels as spheres_to_grid). Every voxel that
+     *        changes from 0 to 1 marks its x-line for the incremental EDT and updates the Dice counters.
+     */
+    void rasterize_reconstruction(const Eigen::MatrixX4f& spheres) {
+        if (spheres.rows() == 0) return;
+        const int n_x = static_cast<int>(recon_mask_.nx());
+        const int n_y = static_cast<int>(recon_mask_.ny());
+        const int n_z = static_cast<int>(recon_mask_.nz());
+        const long sx = static_cast<long>(n_y) * n_z;
+        uint8_t* mask = recon_mask_.data.data();
+        const uint8_t* target = target_.data.data();
+
+        size_t added = 0, added_inside = 0;
+        #pragma omp parallel for reduction(+:added, added_inside)
+        for (int i = 0; i < spheres.rows(); ++i) {
+            const float cx = spheres(i, 0), cy = spheres(i, 1), cz = spheres(i, 2), radius = spheres(i, 3);
+            if (radius <= 0) continue;
+            const float r_sq = radius * radius;
+            const int min_x = std::max(0, static_cast<int>(std::floor(cx - radius)));
+            const int max_x = std::min(n_x - 1, static_cast<int>(std::ceil(cx + radius)));
+            const int min_y = std::max(0, static_cast<int>(std::floor(cy - radius)));
+            const int max_y = std::min(n_y - 1, static_cast<int>(std::ceil(cy + radius)));
+            const int min_z = std::max(0, static_cast<int>(std::floor(cz - radius)));
+            const int max_z = std::min(n_z - 1, static_cast<int>(std::ceil(cz + radius)));
+            for (int x = min_x; x <= max_x; ++x) {
+                float dx = x - cx;
+                float dx2 = dx * dx;
+                if (dx2 > r_sq) continue;
+                for (int y = min_y; y <= max_y; ++y) {
+                    float dy = y - cy;
+                    float dy2 = dy * dy;
+                    float dxy2 = dx2 + dy2;
+                    if (dxy2 > r_sq) continue;
+                    for (int z = min_z; z <= max_z; ++z) {
+                        float dz = z - cz;
+                        float dist_sq = dxy2 + (dz * dz);
+                        if (dist_sq <= r_sq) {
+                            const long idx = x * sx + static_cast<long>(y) * n_z + z;
+                            // spheres overlap and run in parallel: claim the voxel atomically so each change counts once
+                            if (__atomic_load_n(&mask[idx], __ATOMIC_RELAXED) == 0 &&
+                                __atomic_exchange_n(&mask[idx], static_cast<uint8_t>(1), __ATOMIC_RELAXED) == 0) {
+                                ++added;
+                                added_inside += target[idx] > 0;
+                                recon_edt_.mark_line(y, z);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        recon_vol_ += added;
+        intersection_ += added_inside;
+    }
+
+    void rasterize_overlap(const Eigen::MatrixX4f& spheres) {
+        spheres_to_grid<uint8_t>(overlap_mask_, spheres, 1, config_.min_center_distance_rel);
+    }
+
+    /// Summed field = original + weight * residual, with residual = max(0, original - reconstruction)
+    void update_field(float weight_factor) {
+        #pragma omp parallel for
+        for (size_t i = 0; i < summed_field_.data.size(); ++i) {
+            float residual = original_distance_.data[i] - recon_distance_.data[i];
+            residual = (residual > 0.0f) ? residual : 0.0f;
+            summed_field_.data[i] = original_distance_.data[i] + residual * weight_factor;
+        }
+    }
+
+    /// Dice coefficient from the counters (same formula as compute_voxel_precision).
+    double precision() const {
+        if (target_vol_ == 0 && recon_vol_ == 0) return 1.0;
+        if (target_vol_ == 0 || recon_vol_ == 0) return 0.0;
+        return (2.0 * static_cast<double>(intersection_)) / static_cast<double>(target_vol_ + recon_vol_);
+    }
+};
+
+/**
  * @brief Core iterative solver to place spheres based on distance fields and residuals.
  */
 inline Eigen::MatrixX4f compute_sphere_table(
@@ -414,83 +609,7 @@ inline Eigen::MatrixX4f compute_sphere_table(
     VoxelGrid<uint8_t>& recon_mask,
     MultisphereConfig config
 ) {
-    Eigen::MatrixX4f sphere_table = config.initial_sphere_table;
-
-    // Solver State
-    int max_iter = config.persistence, iter = 1, prev_count = 0;
-    float weight_factor = 1.0f;
-    bool peaks_found = false;
-
-    // =========================================================================
-    // Pre-Loop Initialization
-    // =========================================================================
-    // If we start with an existing table, initialize the mask immediately.
-    VoxelGrid<uint8_t> overlap_mask(voxel_grid.nx(), voxel_grid.ny(), voxel_grid.nz(), voxel_grid.voxel_size, voxel_grid.origin);
-    if (sphere_table.rows() > 0) {
-        spheres_to_grid<uint8_t>(recon_mask, sphere_table);
-        prev_count = sphere_table.rows();
-        spheres_to_grid<uint8_t>(overlap_mask, sphere_table, 1,  config.min_center_distance_rel);
-        peaks_found = true;
-    }
-
-    // Temporary memory buffers scoped only to the solver
-    VoxelGrid<float> recon_distance(voxel_grid.nx(), voxel_grid.ny(), voxel_grid.nz(), voxel_grid.voxel_size, voxel_grid.origin);
-    VoxelGrid<float> summed_field(voxel_grid.nx(), voxel_grid.ny(), voxel_grid.nz(), voxel_grid.voxel_size, voxel_grid.origin);
-
-    while (iter <= max_iter) {
-        if (config.max_spheres > 0  && sphere_table.rows() >= config.max_spheres) {
-            if (config.show_progress) std::cout << "Reached maximum number of spheres. Terminating." << std::endl;
-            break;
-        }
-
-        // A. Update Fields & Check Precision
-        if (sphere_table.rows() > 0) {
-            if (peaks_found) {
-                iter = 1;
-                float precision = compute_voxel_precision(voxel_grid, recon_mask);
-                if (config.show_progress) {
-                    std::cout << " -Weight = " << weight_factor << " -Total spheres = " << sphere_table.rows() << " -Precision = " << precision << std::endl;
-                    }
-
-                if (config.precision_target < precision) {
-                    if (config.show_progress) std::cout << "Reached target precision. Terminating." << std::endl;
-                    break;
-                }
-                spheres_to_grid<uint8_t>(overlap_mask, sphere_table.block(prev_count, 0, sphere_table.rows() - prev_count, 4), 1, config.min_center_distance_rel);
-                recon_mask.distance_transform_into(recon_distance);
-            }
-
-            // Summed field = original + weight * residual, with residual = max(0, original - reconstruction)
-            #pragma omp parallel for
-            for (size_t i = 0; i < summed_field.data.size(); ++i) {
-                float residual = original_distance.data[i] - recon_distance.data[i];
-                residual = (residual > 0.0f) ? residual : 0.0f;
-                summed_field.data[i] = original_distance.data[i] + residual * weight_factor;
-            }
-        } else {
-            summed_field.data = original_distance.data;
-        }
-
-        // B. Peak Detection & Filtering
-        Eigen::MatrixX4f peaks = peak_local_max_3d(summed_field, original_distance, overlap_mask, config);
-        peaks = filter_and_shift_peaks(peaks, sphere_table, summed_field,config);
-
-        // C. Iteration Flow Control
-        if (peaks.rows() == 0) {
-            peaks_found = false;
-            ++iter; 
-            ++weight_factor;
-            continue;
-        }
-        
-        peaks_found = true;
-        prev_count = sphere_table.rows();
-        append_sphere_table(sphere_table, peaks, config.max_spheres);
-        spheres_to_grid<uint8_t>(recon_mask, sphere_table.block(prev_count, 0, sphere_table.rows() - prev_count, 4));
-
-    }
-
-    return sphere_table;
+    return MultisphereSolver(original_distance, voxel_grid, recon_mask, config).run();
 }
 
 } // namespace MSS
