@@ -38,22 +38,23 @@ namespace GEMSS {
  * rejected after ~2 reads instead of scanning from the window corner. The result is identical to a full scan.
  * Interior voxels use precomputed linear offsets without bound checks; the boundary layer uses checked offsets.
  *
- * @param field Summed field to search for peaks.
+ * @param F Field to search for peaks, read as F[i] (linear index, z fastest); same shape as original_distance.
  * @param original_distance Original distance field for radius values.
  * @param overlap_mask Voxels excluded from being peaks (near accepted spheres).
  * @param config Uses search_window, min_radius_vox and radius_offset_vox.
  * @return Nx4 matrix (x, y, z, radius) of detected peaks, sorted by radius (descending), then x, y, z.
  */
+template <typename Field>
 inline Eigen::MatrixX4f peak_local_max_3d(
-    const VoxelGrid<float>& field,
+    const Field& F,
     const VoxelGrid<float>& original_distance,
     const VoxelGrid<uint8_t>& overlap_mask,
     const MultisphereConfig& config)
 {
     std::vector<Eigen::Vector4f> peaks;
-    const int nx = (int)field.nx();
-    const int ny = (int)field.ny();
-    const int nz = (int)field.nz();
+    const int nx = (int)original_distance.nx();
+    const int ny = (int)original_distance.ny();
+    const int nz = (int)original_distance.nz();
 
     // Window offsets ordered nearest-first (squared distance, stable so ties keep a fixed order).
     const int w = std::max(config.search_window, 0);
@@ -73,7 +74,6 @@ inline Eigen::MatrixX4f peak_local_max_3d(
     for (size_t k = 0; k < offsets.size(); ++k)
         linear[k] = offsets[k].x() * sy + offsets[k].y() * sz + offsets[k].z();
 
-    const float* F = field.data.data();
     const float* D = original_distance.data.data();
     const uint8_t* M = overlap_mask.data.data();
 
@@ -95,9 +95,8 @@ inline Eigen::MatrixX4f peak_local_max_3d(
                     bool is_max = true;
                     if (radius > w) {
                         // D > w implies the whole window is inside the grid (black-border EDT): no bound checks
-                        const float* c = F + i;
                         for (const long off : linear)
-                            if (c[off] > val) { is_max = false; break; }
+                            if (F[i + off] > val) { is_max = false; break; }
                     } else {
                         // Only reachable when min_radius_vox <= search_window: checked offsets
                         for (const auto& o : offsets) {
@@ -135,19 +134,30 @@ inline Eigen::MatrixX4f peak_local_max_3d(
     return result;
 }
 
+/// Peak detection on a stored field.
+inline Eigen::MatrixX4f peak_local_max_3d(
+    const VoxelGrid<float>& field,
+    const VoxelGrid<float>& original_distance,
+    const VoxelGrid<uint8_t>& overlap_mask,
+    const MultisphereConfig& config)
+{
+    return peak_local_max_3d(GridField{field.data.data()}, original_distance, overlap_mask, config);
+}
+
 /**
  * @brief Filters peaks based on minimum center distance and applies sub-voxel shifts.
  * @param peaks Candidate peaks (Nx4 matrix).
  * @param sphere_table History table of accepted spheres.
- * @param distance_field Distance field for sub-voxel shifting.
+ * @param F Field for sub-voxel shifting, read as F[i] (linear index, z fastest) on an nx * ny * nz grid.
  * @param config Configuration parameters.
  * @return Filtered peaks as Nx4 matrix (x, y, z, radius).
  */
+template <typename Field>
 inline Eigen::MatrixX4f filter_and_shift_peaks(
     const Eigen::MatrixX4f& peaks,
     const Eigen::MatrixX4f& sphere_table,
-    VoxelGrid<float>& distance_field,
-    MultisphereConfig config)
+    const Field& F, int nx, int ny, int nz,
+    const MultisphereConfig& config)
 {
     if (peaks.rows() == 0) return peaks;
     const float min_dist_sq = (float)(config.min_center_distance_rel * config.min_center_distance_rel);
@@ -175,7 +185,7 @@ inline Eigen::MatrixX4f filter_and_shift_peaks(
         }
         if (!collision) {
             Eigen::Vector3i coord_int = peaks.row(i).head<3>().cast<int>();
-            Eigen::Vector3f direction = shift_voxel_center(distance_field, coord_int, 0.25f);
+            Eigen::Vector3f direction = shift_voxel_center(F, nx, ny, nz, coord_int, 0.25f);
             Eigen::Vector3f shift_vec = 0.5f * direction;
             Eigen::Vector3f true_center = coord_int.cast<float>() + shift_vec;
             float true_radius = peaks(i, 3) + shift_vec.norm();
@@ -193,6 +203,18 @@ inline Eigen::MatrixX4f filter_and_shift_peaks(
         result.row(k) = accepted_spheres[k];
     }
     return result;
+}
+
+/// Peak filtering with sub-voxel shifts on a stored field.
+inline Eigen::MatrixX4f filter_and_shift_peaks(
+    const Eigen::MatrixX4f& peaks,
+    const Eigen::MatrixX4f& sphere_table,
+    VoxelGrid<float>& distance_field,
+    MultisphereConfig config)
+{
+    return filter_and_shift_peaks(peaks, sphere_table, GridField{distance_field.data.data()},
+                                  static_cast<int>(distance_field.nx()), static_cast<int>(distance_field.ny()),
+                                  static_cast<int>(distance_field.nz()), config);
 }
 
 /**
@@ -407,13 +429,29 @@ inline void append_sphere_table(
 
 
 /**
+ * @brief Summed field F = original + weight * max(0, original - reconstruction), evaluated where it is read
+ *        instead of stored. With weight 0 it is exactly the original distance field.
+ */
+struct SummedField {
+    const float* original;        ///< distance field of the target
+    const float* reconstruction;  ///< distance field of the reconstruction
+    float weight;
+    float operator[](long i) const {
+        float residual = original[i] - reconstruction[i];
+        residual = (residual > 0.0f) ? residual : 0.0f;
+        return original[i] + residual * weight;
+    }
+};
+
+/**
  * @brief Iterative multisphere solver.
  *
  * Owns the solver grids and passes change information between the stages instead of rescanning the grid:
  *  - rasterizing new spheres into the reconstruction mask records every voxel that changes from 0 to 1,
  *    marks its EDT line for the incremental distance transform and updates the Dice counters;
  *  - the distance transform of the reconstruction is updated incrementally from those lines;
- *  - the precision (Dice) comes from the counters.
+ *  - the precision (Dice) comes from the counters;
+ *  - the summed field is not stored: the peak search reads it from the two distance fields (SummedField).
  * Results are bit-identical to recomputing every stage on the full grid.
  */
 class MultisphereSolver {
@@ -425,7 +463,6 @@ public:
         : original_distance_(original_distance), target_(target), recon_mask_(recon_mask), config_(config),
           overlap_mask_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
           recon_distance_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
-          summed_field_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
           recon_edt_(static_cast<int>(target.nx()), static_cast<int>(target.ny()), static_cast<int>(target.nz()))
     {
         if (recon_mask.shape != target.shape || original_distance.shape != target.shape) {
@@ -470,6 +507,7 @@ public:
             }
 
             // A. Update Fields & Check Precision
+            float field_weight = 0.0f;  // no spheres yet: the summed field is the original distance field
             if (sphere_table.rows() > 0) {
                 if (peaks_found) {
                     iter = 1;
@@ -484,14 +522,14 @@ public:
                     rasterize_overlap(sphere_table.block(prev_count, 0, sphere_table.rows() - prev_count, 4));
                     recon_edt_.update(recon_mask_, recon_distance_);
                 }
-                update_field(weight_factor);
-            } else {
-                summed_field_.data = original_distance_.data;
+                field_weight = weight_factor;
             }
+            const SummedField field{original_distance_.data.data(), recon_distance_.data.data(), field_weight};
 
             // B. Peak Detection & Filtering
-            Eigen::MatrixX4f peaks = peak_local_max_3d(summed_field_, original_distance_, overlap_mask_, config_);
-            peaks = filter_and_shift_peaks(peaks, sphere_table, summed_field_, config_);
+            Eigen::MatrixX4f peaks = peak_local_max_3d(field, original_distance_, overlap_mask_, config_);
+            peaks = filter_and_shift_peaks(peaks, sphere_table, field, static_cast<int>(target_.nx()),
+                                           static_cast<int>(target_.ny()), static_cast<int>(target_.nz()), config_);
 
             // C. Iteration Flow Control
             if (peaks.rows() == 0) {
@@ -518,7 +556,6 @@ private:
 
     VoxelGrid<uint8_t> overlap_mask_;
     VoxelGrid<float> recon_distance_;  ///< distance transform of the reconstruction, kept by recon_edt_
-    VoxelGrid<float> summed_field_;
     IncrementalEDT recon_edt_;
 
     size_t target_vol_ = 0, recon_vol_ = 0, intersection_ = 0;  ///< Dice counters
@@ -580,16 +617,6 @@ private:
 
     void rasterize_overlap(const Eigen::MatrixX4f& spheres) {
         spheres_to_grid<uint8_t>(overlap_mask_, spheres, 1, config_.min_center_distance_rel);
-    }
-
-    /// Summed field = original + weight * residual, with residual = max(0, original - reconstruction)
-    void update_field(float weight_factor) {
-        #pragma omp parallel for
-        for (size_t i = 0; i < summed_field_.data.size(); ++i) {
-            float residual = original_distance_.data[i] - recon_distance_.data[i];
-            residual = (residual > 0.0f) ? residual : 0.0f;
-            summed_field_.data[i] = original_distance_.data[i] + residual * weight_factor;
-        }
     }
 
     /// Dice coefficient from the counters (same formula as compute_voxel_precision).
