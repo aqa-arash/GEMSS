@@ -37,48 +37,70 @@ struct EnvelopeScratch {
     explicit EnvelopeScratch(int n) : f(n), v(n), z(n + 1) {}
 };
 
-/**
- * @brief Lower envelope along one line, in place: d[q] = min_p ((q - p)^2 + f[p]).
- * @param line First sample; samples are `stride` apart.
- * @param n Number of samples.
- * @param border Also take the background sites p = -1 and p = n into account.
- * @param take_root Write sqrt(d) instead of d.
- */
-inline void envelope_1d(float* line, int n, long stride, bool border, bool take_root, EnvelopeScratch& s) {
-    bool background_only = true;
-    for (int q = 0; q < n; ++q) {
-        s.f[q] = line[q * stride];
-        background_only &= (s.f[q] == 0.0);
-    }
-    if (background_only) return;  // all zero, and zero is its own root
-
-    const double inf = std::numeric_limits<double>::infinity();
-    int k = 0;
-    s.v[0] = 0;
-    s.z[0] = -inf;
-    s.z[1] = inf;
-    for (int q = 1; q < n; ++q) {
-        // intersection of the parabolas rooted at q and at the last envelope apex
-        double x = ((s.f[q] + double(q) * q) - (s.f[s.v[k]] + double(s.v[k]) * s.v[k])) / (2.0 * (q - s.v[k]));
-        while (x <= s.z[k]) {
-            --k;
-            x = ((s.f[q] + double(q) * q) - (s.f[s.v[k]] + double(s.v[k]) * s.v[k])) / (2.0 * (q - s.v[k]));
+    /**
+     * @brief Lower envelope over one run of foreground samples held in s.f[0..m), written back to the line:
+     *        d[q] = min_p ((q - p)^2 + f[p]) over the run, plus a background site just before and/or after it.
+     * @param run First voxel of the run in the line; samples are `stride` apart.
+     * @param left Background site at p = -1 (a background voxel or the grid border before the run).
+     * @param right Background site at p = m (a background voxel or the grid border after the run).
+     * @param take_root Write sqrt(d) instead of d.
+     */
+    inline void envelope_run(float* run, int m, long stride, bool left, bool right, bool take_root, EnvelopeScratch& s) {
+        const double inf = std::numeric_limits<double>::infinity();
+        int k = 0;
+        s.v[0] = 0;
+        s.z[0] = -inf;
+        s.z[1] = inf;
+        for (int q = 1; q < m; ++q) {
+            // intersection of the parabolas rooted at q and at the last envelope apex
+            double x = ((s.f[q] + double(q) * q) - (s.f[s.v[k]] + double(s.v[k]) * s.v[k])) / (2.0 * (q - s.v[k]));
+            while (x <= s.z[k]) {
+                --k;
+                x = ((s.f[q] + double(q) * q) - (s.f[s.v[k]] + double(s.v[k]) * s.v[k])) / (2.0 * (q - s.v[k]));
+            }
+            ++k;
+            s.v[k] = q;
+            s.z[k] = x;
+            s.z[k + 1] = inf;
         }
-        ++k;
-        s.v[k] = q;
-        s.z[k] = x;
-        s.z[k + 1] = inf;
+
+        k = 0;
+        for (int q = 0; q < m; ++q) {
+            while (s.z[k + 1] < q) ++k;
+            double d = double(q - s.v[k]) * (q - s.v[k]) + s.f[s.v[k]];
+            if (left) d = std::min(d, double(q + 1) * (q + 1));
+            if (right) d = std::min(d, double(m - q) * (m - q));
+            const float df = static_cast<float>(d);
+            run[q * stride] = take_root ? std::sqrt(df) : df;
+        }
     }
 
-    k = 0;
-    for (int q = 0; q < n; ++q) {
-        while (s.z[k + 1] < q) ++k;
-        double d = double(q - s.v[k]) * (q - s.v[k]) + s.f[s.v[k]];
-        if (border) d = std::min(d, std::min(double(q + 1) * (q + 1), double(n - q) * (n - q)));
-        const float df = static_cast<float>(d);
-        line[q * stride] = take_root ? std::sqrt(df) : df;
+    /**
+     * @brief Lower envelope along one line, in place: d[q] = min_p ((q - p)^2 + f[p]).
+     *
+     * Background voxels (0) split the line into independent runs: for a background site at a, any site p beyond a
+     * gives (q - p)^2 + f(p) > (q - a)^2 for every q on the near side, so it cannot win there. Each run is therefore
+     * transformed on its own, with background sites at its ends, and background voxels are left at 0.
+     * @param line First sample; samples are `stride` apart.
+     * @param n Number of samples.
+     * @param border Also take the background sites p = -1 and p = n into account.
+     * @param take_root Write sqrt(d) instead of d.
+     */
+    inline void envelope_1d(float* line, int n, long stride, bool border, bool take_root, EnvelopeScratch& s) {
+        int a = 0;
+        while (true) {
+            while (a < n && line[a * stride] == 0.0f) ++a;  // skip background
+            if (a == n) return;
+            int b = a;
+            for (; b < n; ++b) {  // copy the run to scratch while finding its end
+                const float f = line[b * stride];
+                if (f == 0.0f) break;
+                s.f[b - a] = f;
+            }
+            envelope_run(line + a * stride, b - a, stride, border || a > 0, border || b < n, take_root, s);
+            a = b;
+        }
     }
-}
 
 } // namespace edt_detail
 
