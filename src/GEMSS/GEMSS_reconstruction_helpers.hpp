@@ -30,6 +30,82 @@
 
 namespace GEMSS {
 
+namespace peak_detail {
+
+/// Search window offsets ordered nearest-first (squared distance, stable so ties keep a fixed order).
+struct Window {
+    int w = 0;
+    std::vector<Eigen::Vector3i> offsets;  ///< (dx, dy, dz)
+    std::vector<long> linear;              ///< the same offsets as linear index steps
+};
+
+inline Window make_window(int search_window, int ny, int nz) {
+    Window win;
+    win.w = std::max(search_window, 0);
+    const int wz = (nz == 1) ? 0 : win.w;  // 2D grid: no z-neighbours
+    const long sy = (long)ny * nz, sz = nz;
+    win.offsets.reserve((size_t)(2 * win.w + 1) * (2 * win.w + 1) * (2 * wz + 1));
+    for (int dx = -win.w; dx <= win.w; ++dx)
+        for (int dy = -win.w; dy <= win.w; ++dy)
+            for (int dz = -wz; dz <= wz; ++dz)
+                if (dx || dy || dz) win.offsets.emplace_back(dx, dy, dz);
+    std::stable_sort(win.offsets.begin(), win.offsets.end(), [](const Eigen::Vector3i& a, const Eigen::Vector3i& b) {
+        return a.squaredNorm() < b.squaredNorm();
+    });
+    win.linear.resize(win.offsets.size());
+    for (size_t k = 0; k < win.offsets.size(); ++k)
+        win.linear[k] = win.offsets[k].x() * sy + win.offsets[k].y() * sz + win.offsets[k].z();
+    return win;
+}
+
+/// Peak test of voxel (x, y, z) with linear index i; on success `radius` is its distance value.
+template <typename Field>
+inline bool is_peak(const Field& F, const float* D, const uint8_t* M, const Window& win,
+                    int x, int y, int z, long i, int nx, int ny, int nz,
+                    const MultisphereConfig& config, float& radius) {
+    radius = D[i];
+    if (radius < config.min_radius_vox) return false;
+    const float val = F[i];
+    if (val <= 1.0f) return false;
+    if (M[i] > 0) return false; // Skip if within overlap region
+    if (radius > win.w) {
+        // D > w implies the whole window is inside the grid (black-border EDT): no bound checks
+        for (const long off : win.linear)
+            if (F[i + off] > val) return false;
+    } else {
+        // Only reachable when min_radius_vox <= search_window: checked offsets
+        const long sy = (long)ny * nz, sz = nz;
+        for (const auto& o : win.offsets) {
+            const int ix = x + o.x(), iy = y + o.y(), iz = z + o.z();
+            if (ix < 0 || ix >= nx || iy < 0 || iy >= ny || iz < 0 || iz >= nz) continue;
+            if (F[ix * sy + iy * sz + iz] > val) return false;
+        }
+    }
+    return true;
+}
+
+/// Peak order: radius (descending), then x, y, z (ascending).
+inline bool peak_order(const Eigen::Vector4f& a, const Eigen::Vector4f& b) {
+    float val_a = a[3];
+    float val_b = b[3];
+    const float epsilon = 1e-5f;
+    if (std::abs(val_a - val_b) > epsilon) {
+        return val_a > val_b;
+    }
+    if (a[0] != b[0]) return a[0] < b[0];
+    if (a[1] != b[1]) return a[1] < b[1];
+    return a[2] < b[2];
+}
+
+inline Eigen::MatrixX4f to_matrix(std::vector<Eigen::Vector4f>& peaks) {
+    std::sort(peaks.begin(), peaks.end(), peak_order);
+    Eigen::MatrixX4f result(peaks.size(), 4);
+    for (size_t i = 0; i < peaks.size(); ++i) result.row(i) = peaks[i];
+    return result;
+}
+
+} // namespace peak_detail
+
 /**
  * @brief Detects local maxima in a 3D volume.
  *
@@ -51,32 +127,15 @@ inline Eigen::MatrixX4f peak_local_max_3d(
     const VoxelGrid<uint8_t>& overlap_mask,
     const MultisphereConfig& config)
 {
-    std::vector<Eigen::Vector4f> peaks;
     const int nx = (int)original_distance.nx();
     const int ny = (int)original_distance.ny();
     const int nz = (int)original_distance.nz();
-
-    // Window offsets ordered nearest-first (squared distance, stable so ties keep a fixed order).
-    const int w = std::max(config.search_window, 0);
-    const int wz = (nz == 1) ? 0 : w;  // 2D grid: no z-neighbours
-    const long sy = (long)ny * nz;     // stride of x (z is the fastest index)
-    const long sz = nz;                // stride of y
-    std::vector<Eigen::Vector3i> offsets;
-    offsets.reserve((size_t)(2 * w + 1) * (2 * w + 1) * (2 * wz + 1));
-    for (int dx = -w; dx <= w; ++dx)
-        for (int dy = -w; dy <= w; ++dy)
-            for (int dz = -wz; dz <= wz; ++dz)
-                if (dx || dy || dz) offsets.emplace_back(dx, dy, dz);
-    std::stable_sort(offsets.begin(), offsets.end(), [](const Eigen::Vector3i& a, const Eigen::Vector3i& b) {
-        return a.squaredNorm() < b.squaredNorm();
-    });
-    std::vector<long> linear(offsets.size());
-    for (size_t k = 0; k < offsets.size(); ++k)
-        linear[k] = offsets[k].x() * sy + offsets[k].y() * sz + offsets[k].z();
-
+    const long sy = (long)ny * nz, sz = nz;
+    const peak_detail::Window win = peak_detail::make_window(config.search_window, ny, nz);
     const float* D = original_distance.data.data();
     const uint8_t* M = overlap_mask.data.data();
 
+    std::vector<Eigen::Vector4f> peaks;
     #pragma omp parallel
     {
         std::vector<Eigen::Vector4f> local_peaks;
@@ -85,27 +144,8 @@ inline Eigen::MatrixX4f peak_local_max_3d(
             for (int y = 0; y < ny; ++y) {
                 const long row = x * sy + y * sz;
                 for (int z = 0; z < nz; ++z) {
-                    const long i = row + z;
-                    const float radius = D[i];
-                    if (radius < config.min_radius_vox) continue;
-                    const float val = F[i];
-                    if (val <= 1.0f) continue;
-                    if (M[i] > 0) continue; // Skip if within overlap region
-
-                    bool is_max = true;
-                    if (radius > w) {
-                        // D > w implies the whole window is inside the grid (black-border EDT): no bound checks
-                        for (const long off : linear)
-                            if (F[i + off] > val) { is_max = false; break; }
-                    } else {
-                        // Only reachable when min_radius_vox <= search_window: checked offsets
-                        for (const auto& o : offsets) {
-                            const int ix = x + o.x(), iy = y + o.y(), iz = z + o.z();
-                            if (ix < 0 || ix >= nx || iy < 0 || iy >= ny || iz < 0 || iz >= nz) continue;
-                            if (F[ix * sy + iy * sz + iz] > val) { is_max = false; break; }
-                        }
-                    }
-                    if (is_max)
+                    float radius;
+                    if (peak_detail::is_peak(F, D, M, win, x, y, z, row + z, nx, ny, nz, config, radius))
                         local_peaks.push_back(Eigen::Vector4f((float)x, (float)y, (float)z, radius + config.radius_offset_vox));
                 }
             }
@@ -113,24 +153,75 @@ inline Eigen::MatrixX4f peak_local_max_3d(
         #pragma omp critical
         peaks.insert(peaks.end(), local_peaks.begin(), local_peaks.end());
     }
+    return peak_detail::to_matrix(peaks);
+}
 
-    // Sort based on radius (descending), then x,y,z (ascending)
-    std::sort(peaks.begin(), peaks.end(), [](const Eigen::Vector4f& a, const Eigen::Vector4f& b) {
-        float val_a = a[3];
-        float val_b = b[3];
-        const float epsilon = 1e-5f;
-        if (std::abs(val_a - val_b) > epsilon) {
-            return val_a > val_b;
-        }
-        if (a[0] != b[0]) return a[0] < b[0];
-        if (a[1] != b[1]) return a[1] < b[1];
-        return a[2] < b[2];
-    });
+/**
+ * @brief Incremental peak search: re-tests only the voxels of the given blocks and keeps every peak of the
+ *        previous search outside them that is still unmasked.
+ *
+ * Exact when, since the previous search, the overlap mask only grew and `test_blocks` covers every voxel within
+ * the search window of a voxel whose field value changed: outside them a voxel's own value and its whole window
+ * are unchanged, so a non-peak stays a non-peak and a peak stays a peak unless it was masked.
+ *
+ * @param previous Raw peaks of the previous search (x, y, z, radius), updated to the new raw peaks.
+ * @param test_blocks Flags of the blocks to re-test, `block` voxels per side, (bx * nby + by) * nbz + bz.
+ * @return New raw peaks, sorted like peak_local_max_3d.
+ */
+template <typename Field>
+inline Eigen::MatrixX4f peak_local_max_3d_incremental(
+    const Field& F,
+    const VoxelGrid<float>& original_distance,
+    const VoxelGrid<uint8_t>& overlap_mask,
+    const MultisphereConfig& config,
+    const std::vector<uint8_t>& test_blocks, int block,
+    std::vector<Eigen::Vector4f>& previous)
+{
+    const int nx = (int)original_distance.nx();
+    const int ny = (int)original_distance.ny();
+    const int nz = (int)original_distance.nz();
+    const long sy = (long)ny * nz, sz = nz;
+    const int nby = (ny + block - 1) / block, nbz = (nz + block - 1) / block;
+    const peak_detail::Window win = peak_detail::make_window(config.search_window, ny, nz);
+    const float* D = original_distance.data.data();
+    const uint8_t* M = overlap_mask.data.data();
+    auto block_of = [&](int x, int y, int z) { return ((long)(x / block) * nby + y / block) * nbz + z / block; };
 
-    Eigen::MatrixX4f result(peaks.size(), 4);
-    for (size_t i = 0; i < peaks.size(); ++i) {
-        result.row(i) = peaks[i];
+    // previous peaks outside the re-tested blocks that are still unmasked
+    std::vector<Eigen::Vector4f> peaks;
+    peaks.reserve(previous.size());
+    for (const Eigen::Vector4f& p : previous) {
+        const int x = (int)p[0], y = (int)p[1], z = (int)p[2];
+        if (!test_blocks[block_of(x, y, z)] && M[x * sy + y * sz + z] == 0) peaks.push_back(p);
     }
+
+    std::vector<int> blocks;
+    for (size_t b = 0; b < test_blocks.size(); ++b)
+        if (test_blocks[b]) blocks.push_back((int)b);
+
+    #pragma omp parallel
+    {
+        std::vector<Eigen::Vector4f> local_peaks;
+        #pragma omp for schedule(dynamic, 1)
+        for (size_t k = 0; k < blocks.size(); ++k) {
+            const int b = blocks[k];
+            const int bz = b % nbz, by = (b / nbz) % nby, bx = b / (nbz * nby);
+            const int x1 = std::min(nx, (bx + 1) * block), y1 = std::min(ny, (by + 1) * block), z1 = std::min(nz, (bz + 1) * block);
+            for (int x = bx * block; x < x1; ++x)
+                for (int y = by * block; y < y1; ++y) {
+                    const long row = x * sy + y * sz;
+                    for (int z = bz * block; z < z1; ++z) {
+                        float radius;
+                        if (peak_detail::is_peak(F, D, M, win, x, y, z, row + z, nx, ny, nz, config, radius))
+                            local_peaks.push_back(Eigen::Vector4f((float)x, (float)y, (float)z, radius + config.radius_offset_vox));
+                    }
+                }
+        }
+        #pragma omp critical
+        peaks.insert(peaks.end(), local_peaks.begin(), local_peaks.end());
+    }
+    Eigen::MatrixX4f result = peak_detail::to_matrix(peaks);
+    previous.swap(peaks);
     return result;
 }
 
@@ -451,7 +542,9 @@ struct SummedField {
  *    marks its EDT line for the incremental distance transform and updates the Dice counters;
  *  - the distance transform of the reconstruction is updated incrementally from those lines;
  *  - the precision (Dice) comes from the counters;
- *  - the summed field is not stored: the peak search reads it from the two distance fields (SummedField).
+ *  - the summed field is not stored: the peak search reads it from the two distance fields (SummedField);
+ *  - while the weight is unchanged, the peak search re-tests only the blocks around changed distances and keeps
+ *    the other peaks of the previous search.
  * Results are bit-identical to recomputing every stage on the full grid.
  */
 class MultisphereSolver {
@@ -463,7 +556,8 @@ public:
         : original_distance_(original_distance), target_(target), recon_mask_(recon_mask), config_(config),
           overlap_mask_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
           recon_distance_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
-          recon_edt_(static_cast<int>(target.nx()), static_cast<int>(target.ny()), static_cast<int>(target.nz()))
+          recon_edt_(static_cast<int>(target.nx()), static_cast<int>(target.ny()), static_cast<int>(target.nz()),
+                     std::max(8, config.search_window))
     {
         if (recon_mask.shape != target.shape || original_distance.shape != target.shape) {
             throw std::invalid_argument("MultisphereSolver: grid shapes must match.");
@@ -481,6 +575,7 @@ public:
         target_vol_ = target_vol;
         recon_vol_ = recon_vol;
         intersection_ = intersection;
+        test_blocks_.assign(recon_edt_.changed_blocks().size(), 0);
     }
 
     /// Runs the solver and returns the sphere table (voxel units); recon_mask holds the reconstruction.
@@ -508,6 +603,7 @@ public:
 
             // A. Update Fields & Check Precision
             float field_weight = 0.0f;  // no spheres yet: the summed field is the original distance field
+            bool distance_updated = false;
             if (sphere_table.rows() > 0) {
                 if (peaks_found) {
                     iter = 1;
@@ -521,13 +617,14 @@ public:
                     }
                     rasterize_overlap(sphere_table.block(prev_count, 0, sphere_table.rows() - prev_count, 4));
                     recon_edt_.update(recon_mask_, recon_distance_);
+                    distance_updated = true;
                 }
                 field_weight = weight_factor;
             }
             const SummedField field{original_distance_.data.data(), recon_distance_.data.data(), field_weight};
 
             // B. Peak Detection & Filtering
-            Eigen::MatrixX4f peaks = peak_local_max_3d(field, original_distance_, overlap_mask_, config_);
+            Eigen::MatrixX4f peaks = find_peaks(field, distance_updated);
             peaks = filter_and_shift_peaks(peaks, sphere_table, field, static_cast<int>(target_.nx()),
                                            static_cast<int>(target_.ny()), static_cast<int>(target_.nz()), config_);
 
@@ -559,6 +656,56 @@ private:
     IncrementalEDT recon_edt_;
 
     size_t target_vol_ = 0, recon_vol_ = 0, intersection_ = 0;  ///< Dice counters
+
+    std::vector<Eigen::Vector4f> peak_cache_;  ///< raw peaks of the last search
+    bool peak_cache_valid_ = false;
+    float peak_cache_weight_ = 0.0f;          ///< summed-field weight of the last search
+    std::vector<uint8_t> test_blocks_;        ///< blocks to re-test in an incremental search
+
+    /**
+     * @brief Raw peaks of the summed field. While the weight is unchanged, the field changes only where the
+     *        reconstruction distance changed, so only those blocks and one block around them (block >= search
+     *        window) are re-tested; a full search runs after a weight change or when most blocks changed.
+     */
+    Eigen::MatrixX4f find_peaks(const SummedField& field, bool distance_updated) {
+        bool full = !peak_cache_valid_ || field.weight != peak_cache_weight_;
+        if (!full) {
+            if (!distance_updated) std::fill(test_blocks_.begin(), test_blocks_.end(), 0);  // field unchanged
+            else full = recon_edt_.all_changed() || !mark_test_blocks();
+        }
+        peak_cache_valid_ = true;
+        peak_cache_weight_ = field.weight;
+        if (full) {
+            Eigen::MatrixX4f peaks = peak_local_max_3d(field, original_distance_, overlap_mask_, config_);
+            peak_cache_.resize(peaks.rows());
+            for (int i = 0; i < peaks.rows(); ++i) peak_cache_[i] = peaks.row(i).transpose();
+            return peaks;
+        }
+        return peak_local_max_3d_incremental(field, original_distance_, overlap_mask_, config_,
+                                             test_blocks_, recon_edt_.block_size(), peak_cache_);
+    }
+
+    /// Test blocks = changed blocks and their 26 neighbours. Returns false if more than half the blocks are marked.
+    bool mark_test_blocks() {
+        const int block = recon_edt_.block_size();
+        const int nbx = (static_cast<int>(target_.nx()) + block - 1) / block;
+        const int nby = (static_cast<int>(target_.ny()) + block - 1) / block;
+        const int nbz = (static_cast<int>(target_.nz()) + block - 1) / block;
+        const std::vector<uint8_t>& changed = recon_edt_.changed_blocks();
+        std::fill(test_blocks_.begin(), test_blocks_.end(), 0);
+        for (int bx = 0; bx < nbx; ++bx)
+            for (int by = 0; by < nby; ++by)
+                for (int bz = 0; bz < nbz; ++bz) {
+                    if (!changed[(static_cast<long>(bx) * nby + by) * nbz + bz]) continue;
+                    for (int x = std::max(0, bx - 1); x <= std::min(nbx - 1, bx + 1); ++x)
+                        for (int y = std::max(0, by - 1); y <= std::min(nby - 1, by + 1); ++y)
+                            for (int z = std::max(0, bz - 1); z <= std::min(nbz - 1, bz + 1); ++z)
+                                test_blocks_[(static_cast<long>(x) * nby + y) * nbz + z] = 1;
+                }
+        size_t marked = 0;
+        for (uint8_t f : test_blocks_) marked += f;
+        return marked * 2 <= test_blocks_.size();
+    }
 
     /**
      * @brief Renders spheres into the reconstruction mask (same voxels as spheres_to_grid). Every voxel that

@@ -15,6 +15,9 @@
  * so the result is bit-identical to a full transform. A pass with more than `full_fraction` dirty lines is
  * recomputed in full (also exact).
  *
+ * After each update, all_changed() and changed_blocks() tell which blocks (block^3 voxels) contain a voxel whose
+ * distance changed, so later stages can restrict their work to those regions.
+ *
  * Contract: between two updates the mask may only change by setting voxels from 0 to non-zero, and the x-line
  * (y, z) of every such voxel must be passed to mark_line(); otherwise call invalidate().
  * Define GEMSS_EDT_VERIFY to compare every update with a full transform.
@@ -43,8 +46,10 @@ class IncrementalEDT {
 public:
     double full_fraction = 0.5;  ///< a pass with a larger fraction of dirty lines is recomputed in full
 
-    IncrementalEDT(int nx, int ny, int nz)
+    IncrementalEDT(int nx, int ny, int nz, int block = 8)
         : nx_(nx), ny_(ny), nz_(nz), sx_(static_cast<long>(ny) * nz),
+          block_(block), nbx_((nx + block - 1) / block), nby_((ny + block - 1) / block), nbz_((nz + block - 1) / block),
+          changed_blocks_(static_cast<size_t>(nbx_) * nby_ * nbz_, 0),
           a_(static_cast<size_t>(nx) * ny * nz), b_(static_cast<size_t>(nx) * ny * nz),
           dirty1_(static_cast<size_t>(ny) * nz, 0), dirty2_(static_cast<size_t>(nx) * nz, 0),
           dirty3_(static_cast<size_t>(nx) * ny, 0) {}
@@ -55,6 +60,12 @@ public:
     /// Forget the stored passes; the next update is a full transform.
     void invalidate() { valid_ = false; }
 
+    /// After update(): the whole field may have changed (a full pass ran); changed_blocks() is then not filled.
+    bool all_changed() const { return all_changed_; }
+    /// After update(): flags of the blocks containing a voxel whose distance changed, (bx * nby + by) * nbz + bz.
+    const std::vector<uint8_t>& changed_blocks() const { return changed_blocks_; }
+    int block_size() const { return block_; }
+
     /// Distance transform of `mask` into `dt`. `dt` must hold the result of this object's previous update.
     void update(const VoxelGrid<uint8_t>& mask, VoxelGrid<float>& dt) {
         if (static_cast<int>(mask.nx()) != nx_ || static_cast<int>(mask.ny()) != ny_ || static_cast<int>(mask.nz()) != nz_)
@@ -62,6 +73,8 @@ public:
         if (dt.shape != mask.shape) { dt = VoxelGrid<float>(mask.nx(), mask.ny(), mask.nz(), mask.voxel_size, mask.origin); valid_ = false; }
         const uint8_t* m = mask.data.data();
         float* C = dt.data.data();
+        std::fill(changed_blocks_.begin(), changed_blocks_.end(), 0);
+        all_changed_ = false;
         if (valid_) incremental(m, C);
         else { pass1_full(m); pass2_full(); pass3_full(C); valid_ = true; }
         std::fill(dirty1_.begin(), dirty1_.end(), 0);
@@ -74,6 +87,9 @@ private:
     int nx_, ny_, nz_;
     long sx_;
     bool valid_ = false;
+    int block_, nbx_, nby_, nbz_;
+    bool all_changed_ = false;
+    std::vector<uint8_t> changed_blocks_;           ///< blocks with a changed distance (last update)
     std::vector<float> a_, b_;                       ///< pass-1 and pass-2 outputs of the last update
     std::vector<uint8_t> dirty1_, dirty2_, dirty3_;  ///< dirty x-lines (y,z), y-lines (x,z), z-lines (x,y)
 
@@ -135,6 +151,7 @@ private:
     }
 
     void pass3_full(float* C) {
+        all_changed_ = true;
         const int nx = nx_, ny = ny_, nz = nz_;
         const long sx = sx_;
         std::memcpy(C, b_.data(), b_.size() * sizeof(float));
@@ -220,16 +237,21 @@ private:
             return;
         }
 
-        // Pass 3 on the dirty z-lines (contiguous), with the root.
+        // Pass 3 on the dirty z-lines (contiguous), with the root; flag the blocks where C changed.
         #pragma omp parallel
         {
             edt_detail::EnvelopeScratch s(std::max(ny, nz));
+            std::vector<float> line(nz);
             #pragma omp for schedule(dynamic, 16)
             for (size_t l = 0; l < L3.size(); ++l) {
                 const int x = L3[l] / ny, y = L3[l] % ny;
                 float* c = C + x * sx + static_cast<long>(y) * nz;
-                std::memcpy(c, b_.data() + x * sx + static_cast<long>(y) * nz, nz * sizeof(float));
-                edt_detail::envelope_1d(c, nz, 1, nz > 1, true, s);
+                std::memcpy(line.data(), b_.data() + x * sx + static_cast<long>(y) * nz, nz * sizeof(float));
+                edt_detail::envelope_1d(line.data(), nz, 1, nz > 1, true, s);
+                const long row_block = (static_cast<long>(x / block_) * nby_ + y / block_) * nbz_;
+                for (int z = 0; z < nz; ++z) {
+                    if (line[z] != c[z]) { c[z] = line[z]; set_flag(&changed_blocks_[row_block + z / block_]); }
+                }
             }
         }
     }
