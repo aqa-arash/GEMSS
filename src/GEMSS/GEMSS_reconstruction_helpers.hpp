@@ -31,11 +31,17 @@ namespace GEMSS {
 
 /**
  * @brief Detects local maxima in a 3D volume.
- * @param field Distance field to search for peaks.
+ *
+ * A voxel is a peak when no in-bounds voxel in its (2w+1)^3 window (w = search_window) has a larger field value.
+ * The window is scanned nearest-first: on a smooth field a non-peak has a larger immediate neighbour, so it is
+ * rejected after ~2 reads instead of scanning from the window corner. The result is identical to a full scan.
+ * Interior voxels use precomputed linear offsets without bound checks; the boundary layer uses checked offsets.
+ *
+ * @param field Summed field to search for peaks.
  * @param original_distance Original distance field for radius values.
- * @param min_distance Minimum distance between peaks.
- * @param min_radius_vox Minimum radius threshold.
- * @return Nx4 matrix (x, y, z, radius) of detected peaks.
+ * @param overlap_mask Voxels excluded from being peaks (near accepted spheres).
+ * @param config Uses search_window, min_radius_vox and radius_offset_vox.
+ * @return Nx4 matrix (x, y, z, radius) of detected peaks, sorted by radius (descending), then x, y, z.
  */
 inline Eigen::MatrixX4f peak_local_max_3d(
     const VoxelGrid<float>& field,
@@ -44,9 +50,31 @@ inline Eigen::MatrixX4f peak_local_max_3d(
     MultisphereConfig config)
 {
     std::vector<Eigen::Vector4f> peaks;
-    int nx = (int)field.nx();
-    int ny = (int)field.ny();
-    int nz = (int)field.nz();
+    const int nx = (int)field.nx();
+    const int ny = (int)field.ny();
+    const int nz = (int)field.nz();
+
+    // Window offsets ordered nearest-first (squared distance, stable so ties keep a fixed order).
+    const int w = std::max(config.search_window, 0);
+    const int wz = (nz == 1) ? 0 : w;  // 2D grid: no z-neighbours
+    const long sy = (long)ny * nz;     // stride of x (z is the fastest index)
+    const long sz = nz;                // stride of y
+    std::vector<Eigen::Vector3i> offsets;
+    offsets.reserve((size_t)(2 * w + 1) * (2 * w + 1) * (2 * wz + 1));
+    for (int dx = -w; dx <= w; ++dx)
+        for (int dy = -w; dy <= w; ++dy)
+            for (int dz = -wz; dz <= wz; ++dz)
+                if (dx || dy || dz) offsets.emplace_back(dx, dy, dz);
+    std::stable_sort(offsets.begin(), offsets.end(), [](const Eigen::Vector3i& a, const Eigen::Vector3i& b) {
+        return a.squaredNorm() < b.squaredNorm();
+    });
+    std::vector<long> linear(offsets.size());
+    for (size_t k = 0; k < offsets.size(); ++k)
+        linear[k] = offsets[k].x() * sy + offsets[k].y() * sz + offsets[k].z();
+
+    const float* F = field.data.data();
+    const float* D = original_distance.data.data();
+    const uint8_t* M = overlap_mask.data.data();
 
     #pragma omp parallel
     {
@@ -54,24 +82,29 @@ inline Eigen::MatrixX4f peak_local_max_3d(
         #pragma omp for collapse(2)
         for (int x = 0; x < nx; ++x) {
             for (int y = 0; y < ny; ++y) {
+                const long row = x * sy + y * sz;
+                const bool interior_xy = x >= w && x < nx - w && y >= w && y < ny - w;
                 for (int z = 0; z < nz; ++z) {
-                    float val = field(x, y, z);
-                    float radius = original_distance(x, y, z) ;
-
+                    const long i = row + z;
+                    const float radius = D[i];
                     if (radius < config.min_radius_vox) continue;
+                    const float val = F[i];
                     if (val <= 1.0f) continue;
-                    if (overlap_mask(x, y, z) > 0) continue; // Skip if within overlap region
+                    if (M[i] > 0) continue; // Skip if within overlap region
 
                     bool is_max = true;
-                    // Check local neighborhood
-                    for (int dx = -config.search_window; is_max && dx <= config.search_window; ++dx) {
-                        for (int dy = -config.search_window; is_max && dy <= config.search_window; ++dy) {
-                            for (int dz = -config.search_window; is_max && dz <= config.search_window; ++dz) {
-                                int nx_idx = x + dx, ny_idx = y + dy, nz_idx = z + dz;
-                                if (nx_idx >= 0 && nx_idx < nx && ny_idx >= 0 && ny_idx < ny && nz_idx >= 0 && nz_idx < nz) {
-                                    if (field(nx_idx, ny_idx, nz_idx) > val) is_max = false;
-                                }
-                            }
+                    if (interior_xy && z >= wz && z < nz - wz) {
+                        // Whole window in bounds: linear offsets, no bound checks
+                        const float* c = F + i;
+                        for (const long off : linear) {
+                            if (c[off] > val) { is_max = false; break; }
+                        }
+                    } else {
+                        // Boundary layer: same order, with bound checks
+                        for (const auto& o : offsets) {
+                            const int ix = x + o.x(), iy = y + o.y(), iz = z + o.z();
+                            if (ix < 0 || ix >= nx || iy < 0 || iy >= ny || iz < 0 || iz >= nz) continue;
+                            if (F[ix * sy + iy * sz + iz] > val) { is_max = false; break; }
                         }
                     }
                     if (is_max) {
