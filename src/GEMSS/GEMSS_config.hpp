@@ -9,15 +9,15 @@ namespace GEMSS {
 
 struct MultisphereConfig {
     // --- Required for mesh reconstruction ---
-    int div = 200;               // grid resolution
+    int div = 150;               // grid resolution
     int padding = 2;             // grid padding
     float minimum_radius_real = 0.0f; // min sphere radius (real units)
     bool confine_mesh = false;   // confine to mesh boundary
 
     // --- Peak detection and filtering ---
-    float min_center_distance_rel = 1.4f; // min center distance (relative) computed as k <= sqrt(min_radius)
-    int search_window = 2;       // neighbor distance for peaks
-    float radius_offset_vox = 0.0f; // radius correction
+    float min_center_distance_rel = 2.0f; // min center distance (relative) computed as k <= sqrt(min_radius)
+    int search_window = 5;       // neighbor distance for peaks
+    float radius_offset_vox = 0.4f; // radius correction
     int min_radius_vox = 4;      // min sphere radius (voxels)
 
 
@@ -36,8 +36,8 @@ struct MultisphereConfig {
 
     // --- Fragmentation setting 
     bool conserve_mass = true;
-    float parent_representation_offset = 0.87f; // offset for the voxelization of the parent from spheres -> ensures no new spheres place engulfing the old ones (shrink the target by 1 diagonal voxel)
-    float fracture_plane_offset = 0.15f; // offset coefficient for fracture plane during splitting ( x * voxel size, applied to the plane normal direction, larger values creates a gap between fragments to ensure clean splitting - model sawed off at the plane without residual voxels bridging the fragments, but causes mass loss)
+    float parent_representation_offset = 0.0f; // offset for the voxelization of the parent from spheres -> ensures no new spheres place engulfing the old ones (shrink the target by 1 diagonal voxel)
+    float fracture_plane_offset = 0.0f; // offset coefficient for fracture plane during splitting ( x * voxel size, applied to the plane normal direction, larger values creates a gap between fragments to ensure clean splitting - model sawed off at the plane without residual voxels bridging the fragments, but causes mass loss)
     
 };
 
