@@ -141,21 +141,28 @@ inline float check_axis_shift(
 }
 
 /**
- * @brief Determines sub-voxel shift for local maxima.
- * @param field Voxel grid field.
- * @param idx Voxel index.
- * @param epsilon Tolerance.
- * @return Sub-voxel shift vector.
+ * @brief Field accessor for a stored float grid, for the functions that accept any field (F[i], linear index,
+ *        z fastest). See SummedField for a field that is computed on access.
  */
-/// Read access to a stored float grid by linear index (z fastest), for the field-generic functions.
 struct GridField {
-    const float* data;
+    const float* data;  ///< grid values
+
+    /// Value at linear index i.
     float operator[](long i) const { return data[i]; }
 };
 
 /**
- * @brief Determines sub-voxel shift for local maxima on any field accessor (F[i], linear index, z fastest),
- *        utilizing a zero-bounds-check fast path. Same result as the VoxelGrid version.
+ * @brief Sub-voxel shift of a local maximum.
+ *
+ * Along each axis, the shift is +1 (or -1) if the neighbour on that side has the same value (within epsilon)
+ * and the next one is lower, i.e. the maximum is a plateau of two voxels. Interior voxels take a path without
+ * bound checks; the boundary path follows check_axis_shift().
+ *
+ * @param F Field accessor, F[i] with i the linear index (z fastest).
+ * @param nx, ny, nz Grid size.
+ * @param idx Voxel of the maximum.
+ * @param epsilon Tolerance for equal values.
+ * @return Shift direction per axis (each -1, 0 or 1).
  */
 template <typename Field>
 inline Eigen::Vector3f shift_voxel_center(
@@ -217,7 +224,11 @@ inline Eigen::Vector3f shift_voxel_center(
 }
 
 /**
- * @brief Determines sub-voxel shift for local maxima utilizing a zero-bounds-check fast path.
+ * @brief Sub-voxel shift of a local maximum of a stored field (see the templated shift_voxel_center()).
+ * @param field Voxel grid field.
+ * @param idx Voxel of the maximum.
+ * @param epsilon Tolerance for equal values.
+ * @return Shift direction per axis (each -1, 0 or 1).
  */
 inline Eigen::Vector3f shift_voxel_center(
     const VoxelGrid<float>& field,
