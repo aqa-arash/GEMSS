@@ -21,8 +21,8 @@
 #endif
 #include <memory>
 #include <Eigen/Core>
-#include "thirdparty/edt.hpp" ///< High-performance C++ EDT library
-
+#include <stdexcept>
+#include "GEMSS_edt.hpp" ///< Exact Euclidean distance transform
 
 namespace GEMSS {
 
@@ -114,112 +114,26 @@ public:
     size_t ny() const { return shape[1]; }
     size_t nz() const { return shape[2]; }
 
-    /**
-     * @brief Compute distance transform using EDT library.
+       /**
+     * @brief Exact Euclidean distance transform (in voxels): distance of each voxel to the nearest
+     *        background (0) voxel; outside the grid counts as background.
+     * @param binary_mode Only binary mode is implemented (voxels > 0 are foreground).
      * @return VoxelGrid<float> with voxelized distances.
      */
-    VoxelGrid<float> distance_transform(bool binary_mode = true ) const {
+    VoxelGrid<float> distance_transform(bool binary_mode = true) const {
         VoxelGrid<float> result(nx(), ny(), nz(), voxel_size, origin);
-
-        int num_threads = 1;
-        #ifdef HAVE_OPENMP
-            num_threads = omp_get_max_threads();
-        #else
-            num_threads = std::thread::hardware_concurrency();
-            if (num_threads == 0) num_threads = 1;
-        #endif
-
-        // --- 2D fast path: a single-slice grid must use the 2D EDT. ---
-        // The 3D EDT with black_border on a 1-voxel-thick slab would clamp every
-        // foreground voxel to distance 1 from the empty z-faces, destroying the field.
-        if (shape[2] == 1) {
-            std::vector<uint8_t> mask(this->data.size());
-            for (size_t i = 0; i < this->data.size(); ++i)
-                mask[i] = (this->data[i] > static_cast<T>(0)) ? 1 : 0;
-
-            // Layout idx = x*ny + y  =>  y is contiguous. EDT wants x fastest,
-            // so EDT sx = ny (fast axis), EDT sy = nx.
-            std::unique_ptr<float[]> dists2d(edt::binary_edt<uint8_t>(
-                mask.data(),
-                static_cast<int>(shape[1]),   // sx (fast)
-                static_cast<int>(shape[0]),   // sy
-                1.0f, 1.0f,
-                /*black_border=*/true, num_threads, nullptr));
-
-            for (size_t i = 0; i < this->data.size(); ++i) result.data[i] = dists2d[i];
-            return result;
-        }
-        
-        std::unique_ptr<float[]> dists = nullptr;
-
-        if (binary_mode) {
-            if constexpr (std::is_same_v<T, uint8_t>) {
-                // 1. Cross-platform OpenMP check for multi-label data
-                int needs_flattening = 0;
-                
-                #pragma omp parallel for reduction(|:needs_flattening)
-                for (size_t i = 0; i < this->data.size(); ++i) {
-                    if (this->data[i] > 1) {
-                        needs_flattening |= 1;
-                    }
-                }
-
-                // 2. Branch: Flatten multi-label data OR use zero-copy fast path
-                if (needs_flattening != 0) {
-                    #ifdef MULTISPHERE_DEBUG
-                    std::cerr << "[Warning] VoxelGrid uint8_t data contains multi-label values (> 1). Flattening to strict binary mask." << std::endl;
-                    #endif
-                    
-                    std::vector<uint8_t> temp_mask(this->data.size());
-                    for(size_t i = 0; i < this->data.size(); ++i) {
-                        temp_mask[i] = (this->data[i] > 0) ? 1 : 0;
-                    }
-                    
-                    dists.reset(edt::binary_edt<uint8_t>(
-                        temp_mask.data(), 
-                        static_cast<int>(shape[2]), 
-                        static_cast<int>(shape[1]), 
-                        static_cast<int>(shape[0]), 
-                        1.0f, 1.0f, 1.0f, 
-                        true, num_threads, nullptr
-                    ));
-                } else {
-                    // Zero-copy fast path
-                    dists.reset(edt::binary_edt<uint8_t>(
-                        const_cast<uint8_t*>(this->data.data()), 
-                        static_cast<int>(shape[2]), 
-                        static_cast<int>(shape[1]), 
-                        static_cast<int>(shape[0]), 
-                        1.0f, 1.0f, 1.0f, 
-                        true, num_threads, nullptr
-                    ));
-                }
-            } else {
-                // Safe allocation block for generic non-uint8_t types
-                std::vector<uint8_t> temp_mask(this->data.size());
-                for(size_t i = 0; i < this->data.size(); ++i) {
-                    temp_mask[i] = (this->data[i] > static_cast<T>(0)) ? 1 : 0;
-                }
-                
-                dists.reset(edt::binary_edt<uint8_t>(
-                    temp_mask.data(), 
-                    static_cast<int>(shape[2]), 
-                    static_cast<int>(shape[1]), 
-                    static_cast<int>(shape[0]), 
-                    1.0f, 1.0f, 1.0f, 
-                    true, num_threads, nullptr
-                ));
-            }
-        } else {
-            throw std::runtime_error("Non-binary EDT mode not implemented yet.");
-        }
-        
-        
-        for(size_t i = 0; i < this->data.size(); ++i) {
-            result.data[i] = dists[i];
-        }
-
+        distance_transform_into(result, binary_mode);
         return result;
+    }
+
+    /**
+     * @brief Distance transform written into an existing grid (reused buffer, no allocation if sized).
+     */
+    void distance_transform_into(VoxelGrid<float>& out, bool binary_mode = true) const {
+        if (!binary_mode) throw std::runtime_error("Non-binary EDT mode not implemented yet.");
+        if (out.shape != shape) out = VoxelGrid<float>(nx(), ny(), nz(), voxel_size, origin);
+        euclidean_distance_transform(this->data.data(), static_cast<int>(nx()), static_cast<int>(ny()),
+                                     static_cast<int>(nz()), out.data.data());
     }
     
 

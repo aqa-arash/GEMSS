@@ -404,31 +404,6 @@ inline void append_sphere_table(
     }
 }
 
-/**
- * @brief Computes the residual distance field (original - spheres).
- * @param original_distance Original distance field.
- * @param spheres_distance Distance field from spheres.
- * @return Residual distance field.
- */
-inline VoxelGrid<float> residual_distance_field(
-    const VoxelGrid<float>& original_distance,
-    const VoxelGrid<float>& spheres_distance)
-{
-    if (original_distance.nx() != spheres_distance.nx() ||
-        original_distance.ny() != spheres_distance.ny() ||
-        original_distance.nz() != spheres_distance.nz()) {
-        throw std::invalid_argument("Shapes must match.");
-    }
-    VoxelGrid<float> residual(original_distance.nx(), original_distance.ny(), original_distance.nz(),
-                              original_distance.voxel_size, original_distance.origin);
-    #pragma omp parallel for
-    for (size_t i = 0; i < residual.data.size(); ++i) {
-        float val = original_distance.data[i] - spheres_distance.data[i];
-        residual.data[i] = (val > 0.0f) ? val : 0.0f;
-    }
-    return residual;
-}
-
 
 /**
  * @brief Core iterative solver to place spheres based on distance fields and residuals.
@@ -459,7 +434,7 @@ inline Eigen::MatrixX4f compute_sphere_table(
     }
 
     // Temporary memory buffers scoped only to the solver
-    VoxelGrid<float> residual(voxel_grid.nx(), voxel_grid.ny(), voxel_grid.nz(), voxel_grid.voxel_size, voxel_grid.origin);
+    VoxelGrid<float> recon_distance(voxel_grid.nx(), voxel_grid.ny(), voxel_grid.nz(), voxel_grid.voxel_size, voxel_grid.origin);
     VoxelGrid<float> summed_field(voxel_grid.nx(), voxel_grid.ny(), voxel_grid.nz(), voxel_grid.voxel_size, voxel_grid.origin);
 
     while (iter <= max_iter) {
@@ -482,12 +457,15 @@ inline Eigen::MatrixX4f compute_sphere_table(
                     break;
                 }
                 spheres_to_grid<uint8_t>(overlap_mask, sphere_table.block(prev_count, 0, sphere_table.rows() - prev_count, 4), 1, config.min_center_distance_rel);
-                residual = residual_distance_field(original_distance, recon_mask.distance_transform());
+                recon_mask.distance_transform_into(recon_distance);
             }
 
+            // Summed field = original + weight * residual, with residual = max(0, original - reconstruction)
             #pragma omp parallel for
             for (size_t i = 0; i < summed_field.data.size(); ++i) {
-                summed_field.data[i] = original_distance.data[i] + residual.data[i] * weight_factor;
+                float residual = original_distance.data[i] - recon_distance.data[i];
+                residual = (residual > 0.0f) ? residual : 0.0f;
+                summed_field.data[i] = original_distance.data[i] + residual * weight_factor;
             }
         } else {
             summed_field.data = original_distance.data;
