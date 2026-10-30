@@ -41,9 +41,9 @@ namespace GEMSS {
 /**
  * @brief Incremental Euclidean distance transform of a growing binary mask.
  *
- * Mark the x-line (y, z) of every voxel that changes from 0 to 1 with mark_line(), then call update(). Any other
- * change of the mask requires invalidate(). After an update, changed_blocks() flags the blocks in which a
- * distance changed; the first update reports all_changed() instead.
+ * Mark the x-line (y, z) of every voxel that changes from 0 to 1 with mark_line(), then call update(). The mask
+ * must not change in any other way. After an update, changed_blocks() flags the blocks in which a distance
+ * changed; the first update reports all_changed() instead.
  */
 class IncrementalEDT {
 public:
@@ -67,9 +67,6 @@ public:
 
     /// Marks x-line (y, z) as changed. Thread-safe.
     void mark_line(int y, int z) { set_flag(&dirty_x_[static_cast<size_t>(y) * nz_ + z]); }
-
-    /// Forgets the stored passes, so that the next update is a full transform.
-    void invalidate() { valid_ = false; }
 
     /// True if the last update was a complete transform (first update); changed_blocks() is then not filled.
     bool all_changed() const { return all_changed_; }
@@ -105,7 +102,7 @@ public:
         if (valid_) {
             update_lines(m, c);
         } else {
-            // Stored values may be stale: recompute every line (writing only differing values is still complete).
+            // First update: recompute every line (writing only differing values is still complete).
             full_pass_x(m);
             update_y_lines(all_lines(dirty_y_.size()));
             update_z_lines(all_lines(dirty_z_.size()), c);
