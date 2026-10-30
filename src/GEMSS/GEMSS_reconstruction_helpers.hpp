@@ -296,22 +296,6 @@ inline Eigen::MatrixX4f peak_local_max_3d_incremental(
     return result;
 }
 
-/**
- * @brief Detects local maxima of a stored field (see the templated peak_local_max_3d()).
- * @param field Field to search for peaks.
- * @param original_distance Original distance field (radius values).
- * @param overlap_mask Voxels excluded from being peaks.
- * @param config Uses search_window, min_radius_vox and radius_offset_vox.
- * @return Nx4 matrix (x, y, z, radius) of the peaks.
- */
-inline Eigen::MatrixX4f peak_local_max_3d(
-    const VoxelGrid<float>& field,
-    const VoxelGrid<float>& original_distance,
-    const VoxelGrid<uint8_t>& overlap_mask,
-    const MultisphereConfig& config)
-{
-    return peak_local_max_3d(GridField{field.data.data()}, original_distance, overlap_mask, config);
-}
 
 /**
  * @brief Filters peaks based on minimum center distance and applies sub-voxel shifts.
@@ -375,24 +359,6 @@ inline Eigen::MatrixX4f filter_and_shift_peaks(
     return result;
 }
 
-/**
- * @brief Filters peaks based on minimum center distance and applies sub-voxel shifts on a stored field.
- * @param peaks Candidate peaks (Nx4 matrix).
- * @param sphere_table History table of accepted spheres.
- * @param distance_field Field for the sub-voxel shift.
- * @param config Uses min_center_distance_rel.
- * @return Filtered peaks as Nx4 matrix (x, y, z, radius).
- */
-inline Eigen::MatrixX4f filter_and_shift_peaks(
-    const Eigen::MatrixX4f& peaks,
-    const Eigen::MatrixX4f& sphere_table,
-    VoxelGrid<float>& distance_field,
-    MultisphereConfig config)
-{
-    return filter_and_shift_peaks(peaks, sphere_table, GridField{distance_field.data.data()},
-                                  static_cast<int>(distance_field.nx()), static_cast<int>(distance_field.ny()),
-                                  static_cast<int>(distance_field.nz()), config);
-}
 
 /**
  * @brief Filters the sphere table to keep only the largest connected network.

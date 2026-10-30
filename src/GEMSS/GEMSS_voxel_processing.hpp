@@ -99,64 +99,11 @@ void apply_kernel_to_grid(
 }
 
 /**
- * @brief Helper function to check axis direction for peak shifting.
- * @param field Voxel grid field.
- * @param cx Center x.
- * @param cy Center y.
- * @param cz Center z.
- * @param dx Direction x.
- * @param dy Direction y.
- * @param dz Direction z.
- * @param current_val Current value.
- * @param epsilon Tolerance.
- * @return Shift value (1.0, -1.0, or 0.0).
- */
-inline float check_axis_shift(
-    const VoxelGrid<float>& field,
-    int cx, int cy, int cz,
-    int dx, int dy, int dz,
-    float current_val,
-    float epsilon)
-{
-    int nx = field.nx();
-    int ny = field.ny();
-    int nz = field.nz();
-
-    int n1_x = cx + dx;
-    int n1_y = cy + dy;
-    int n1_z = cz + dz;
-    if (n1_x < 0 || n1_x >= nx || n1_y < 0 || n1_y >= ny || n1_z < 0 || n1_z >= nz) return 0.0f;
-    float val_n1 = field(n1_x, n1_y, n1_z);
-    if (std::abs(val_n1 - current_val) > epsilon) return 0.0f;
-
-    int n2_x = cx + (dx * 2);
-    int n2_y = cy + (dy * 2);
-    int n2_z = cz + (dz * 2);
-    if (n2_x < 0 || n2_x >= nx || n2_y < 0 || n2_y >= ny || n2_z < 0 || n2_z >= nz) return (float)dx;
-    float val_n2 = field(n2_x, n2_y, n2_z);
-    if (val_n2 < current_val - epsilon) {
-        return (float)dx;
-    }
-    return 0.0f;
-}
-
-/**
- * @brief Field accessor for a stored float grid, for the functions that accept any field (F[i], linear index,
- *        z fastest). See SummedField for a field that is computed on access.
- */
-struct GridField {
-    const float* data;  ///< grid values
-
-    /// Value at linear index i.
-    float operator[](long i) const { return data[i]; }
-};
-
-/**
  * @brief Sub-voxel shift of a local maximum.
  *
  * Along each axis, the shift is +1 (or -1) if the neighbour on that side has the same value (within epsilon)
  * and the next one is lower, i.e. the maximum is a plateau of two voxels. Interior voxels take a path without
- * bound checks; the boundary path follows check_axis_shift().
+ * bound checks.
  *
  * @param F Field accessor, F[i] with i the linear index (z fastest).
  * @param nx, ny, nz Grid size.
@@ -202,7 +149,7 @@ inline Eigen::Vector3f shift_voxel_center(
         return Eigen::Vector3f(sx, sy, sz);
     }
 
-    // SLOW-PATH: Boundary voxels fallback (same rules as check_axis_shift)
+    // SLOW-PATH: Boundary voxels fallback
     auto axis_shift = [&](int dx, int dy, int dz) -> float {
         const int n1_x = x + dx, n1_y = y + dy, n1_z = z + dz;
         if (n1_x < 0 || n1_x >= nx || n1_y < 0 || n1_y >= ny || n1_z < 0 || n1_z >= nz) return 0.0f;
@@ -223,21 +170,6 @@ inline Eigen::Vector3f shift_voxel_center(
     return Eigen::Vector3f(sx, sy, sz);
 }
 
-/**
- * @brief Sub-voxel shift of a local maximum of a stored field (see the templated shift_voxel_center()).
- * @param field Voxel grid field.
- * @param idx Voxel of the maximum.
- * @param epsilon Tolerance for equal values.
- * @return Shift direction per axis (each -1, 0 or 1).
- */
-inline Eigen::Vector3f shift_voxel_center(
-    const VoxelGrid<float>& field,
-    const Eigen::Vector3i& idx,
-    float epsilon = 1e-5f)
-{
-    return shift_voxel_center(GridField{field.data.data()}, static_cast<int>(field.nx()), static_cast<int>(field.ny()),
-                              static_cast<int>(field.nz()), idx, epsilon);
-}
 
 /**
  * @brief Computes reconstruction precision based on mismatch.
