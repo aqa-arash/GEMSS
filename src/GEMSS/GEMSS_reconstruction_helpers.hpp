@@ -173,6 +173,47 @@ inline Eigen::MatrixX4f peak_local_max_3d(
 }
 
 /**
+ * @brief Detects local maxima among a list of candidate voxels (see peak_local_max_3d()).
+ * @param candidates Linear indices of the voxels to test.
+ * @return Peaks in the same form and order as peak_local_max_3d().
+ */
+template <typename Field>
+inline Eigen::MatrixX4f peak_local_max_3d(
+    const Field& F,
+    const VoxelGrid<float>& original_distance,
+    const VoxelGrid<uint8_t>& overlap_mask,
+    const MultisphereConfig& config,
+    const std::vector<long>& candidates)
+{
+    const int nx = static_cast<int>(original_distance.nx());
+    const int ny = static_cast<int>(original_distance.ny());
+    const int nz = static_cast<int>(original_distance.nz());
+    const long sy = static_cast<long>(ny) * nz;
+    const peak_detail::Window win = peak_detail::make_window(config.search_window, ny, nz);
+    const float* D = original_distance.data.data();
+    const uint8_t* M = overlap_mask.data.data();
+
+    std::vector<Eigen::Vector4f> peaks;
+    #pragma omp parallel
+    {
+        std::vector<Eigen::Vector4f> local_peaks;
+        #pragma omp for schedule(dynamic, 4096)
+        for (size_t k = 0; k < candidates.size(); ++k) {
+            const long i = candidates[k];
+            const int x = static_cast<int>(i / sy), y = static_cast<int>((i % sy) / nz), z = static_cast<int>(i % nz);
+            float radius;
+            if (peak_detail::is_peak(F, D, M, win, x, y, z, i, nx, ny, nz, config, radius)) {
+                local_peaks.emplace_back(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z),
+                                         radius + config.radius_offset_vox);
+            }
+        }
+        #pragma omp critical
+        peaks.insert(peaks.end(), local_peaks.begin(), local_peaks.end());
+    }
+    return peak_detail::sorted_matrix(peaks);
+}
+
+/**
  * @brief Incremental peak detection: re-tests only the voxels of the marked blocks and keeps the previous peaks
  *        outside them that are still outside the overlap mask.
  *
@@ -188,6 +229,7 @@ inline Eigen::MatrixX4f peak_local_max_3d(
  * @param test_blocks Flags of the blocks to re-test, indexed (bx * nby + by) * nbz + bz.
  * @param block Block edge length (voxels).
  * @param previous Peaks (x, y, z, radius) of the previous search; replaced by the new peaks.
+ * @param candidate Optional flags of the voxels that may be peaks (nullptr: every voxel).
  * @return The new peaks, in the same form and order as peak_local_max_3d().
  */
 template <typename Field>
@@ -198,7 +240,8 @@ inline Eigen::MatrixX4f peak_local_max_3d_incremental(
     const MultisphereConfig& config,
     const std::vector<uint8_t>& test_blocks,
     int block,
-    std::vector<Eigen::Vector4f>& previous)
+    std::vector<Eigen::Vector4f>& previous,
+    const uint8_t* candidate = nullptr)
 {
     const int nx = static_cast<int>(original_distance.nx());
     const int ny = static_cast<int>(original_distance.ny());
@@ -235,6 +278,7 @@ inline Eigen::MatrixX4f peak_local_max_3d_incremental(
                 for (int y = by * block; y < y_end; ++y) {
                     const long row = x * sy + y * sz;
                     for (int z = bz * block; z < z_end; ++z) {
+                        if (candidate && !candidate[row + z]) continue;
                         float radius;
                         if (peak_detail::is_peak(F, D, M, win, x, y, z, row + z, nx, ny, nz, config, radius)) {
                             local_peaks.emplace_back(static_cast<float>(x), static_cast<float>(y), static_cast<float>(z),
@@ -590,8 +634,9 @@ struct SummedField {
  *   - the distance field of the reconstruction is updated incrementally (IncrementalEDT), which reports the
  *     blocks in which it changed;
  *   - the summed field is computed where it is read (SummedField);
- *   - while the weight is unchanged, the peak search re-tests only the blocks around changed distances.
- * The result is bit-identical to recomputing every stage on the full grid.
+ *   - peaks are searched only on the medial axis of the target (config.medial_flux_threshold), and while the
+ *     weight is unchanged only in the blocks around changed distances.
+ * Apart from the medial-axis restriction, the result is bit-identical to recomputing every stage on the full grid.
  */
 class MultisphereSolver {
 public:
@@ -600,8 +645,8 @@ public:
      * @param original_distance Distance field of the target.
      * @param target Target voxel grid (> 0 is inside).
      * @param recon_mask Reconstruction mask; receives the reconstruction (usually empty at the start).
-     * @param config Solver settings (search_window, min_radius_vox, min_center_distance_rel, radius_offset_vox,
-     *        precision_target, persistence, max_spheres, initial_sphere_table, show_progress).
+     * @param config Solver settings (search_window, min_radius_vox, medial_flux_threshold, min_center_distance_rel,
+     *        radius_offset_vox, precision_target, persistence, max_spheres, initial_sphere_table, show_progress).
      * @throws std::invalid_argument if the grid shapes differ.
      */
     MultisphereSolver(const VoxelGrid<float>& original_distance,
@@ -633,6 +678,7 @@ public:
         recon_volume_ = recon_volume;
         intersection_ = intersection;
         test_blocks_.assign(recon_edt_.changed_blocks().size(), 0);
+        if (config.medial_flux_threshold >= 0.0f) find_medial_candidates();
     }
 
     /**
@@ -721,6 +767,52 @@ private:
     bool peak_cache_valid_ = false;            ///< a search has run
     float peak_cache_weight_ = 0.0f;           ///< summed-field weight of the last search
     std::vector<uint8_t> test_blocks_;         ///< blocks to re-test in an incremental search
+    std::vector<uint8_t> candidate_;           ///< voxels that may be peaks (empty: every voxel)
+    std::vector<long> candidates_;             ///< their linear indices, minus those masked since
+
+    /**
+     * @brief Selects the voxels that may be peaks: distance at least min_radius_vox and on the medial axis of
+     *        the target, i.e. the average outward flux of the distance gradient through the 26 neighbours is
+     *        below -medial_flux_threshold. Voxels too close to the border for the flux stencil are kept.
+     */
+    void find_medial_candidates() {
+        const int nz = static_cast<int>(target_.nz());
+        const long sy = nz, sx = static_cast<long>(target_.ny()) * nz;
+        const float* D = original_distance_.data.data();
+        const long n = static_cast<long>(original_distance_.data.size());
+        const float threshold = config_.medial_flux_threshold;
+
+        // Unit directions to the neighbours (in-plane only for a 2D grid) and their index steps
+        std::vector<Eigen::Vector3f> directions;
+        std::vector<long> steps;
+        const int dz_max = (nz == 1) ? 0 : 1;
+        for (int dx = -1; dx <= 1; ++dx)
+            for (int dy = -1; dy <= 1; ++dy)
+                for (int dz = -dz_max; dz <= dz_max; ++dz)
+                    if (dx || dy || dz) {
+                        directions.push_back(Eigen::Vector3f(dx, dy, dz).normalized());
+                        steps.push_back(dx * sx + dy * sy + dz);
+                    }
+        auto gradient = [&](long i) {
+            const float gz = (nz == 1) ? 0.0f : 0.5f * (D[i + 1] - D[i - 1]);
+            return Eigen::Vector3f(0.5f * (D[i + sx] - D[i - sx]), 0.5f * (D[i + sy] - D[i - sy]), gz);
+        };
+
+        candidate_.assign(n, 0);
+        #pragma omp parallel for schedule(static)
+        for (long i = 0; i < n; ++i) {
+            if (D[i] < config_.min_radius_vox) continue;
+            if (D[i] >= 3.0f) {  // the stencil reaches 2 voxels; D >= 3 keeps it inside the grid
+                float flux = 0.0f;
+                for (size_t k = 0; k < steps.size(); ++k) flux += directions[k].dot(gradient(i + steps[k]));
+                if (flux / steps.size() >= -threshold) continue;
+            }
+            candidate_[i] = 1;
+        }
+        for (long i = 0; i < n; ++i) {
+            if (candidate_[i]) candidates_.push_back(i);
+        }
+    }
 
     /**
      * @brief Peaks of the summed field.
@@ -746,13 +838,23 @@ private:
         peak_cache_weight_ = field.weight;
 
         if (full) {
-            Eigen::MatrixX4f peaks = peak_local_max_3d(field, original_distance_, overlap_mask_, config_);
+            Eigen::MatrixX4f peaks;
+            if (candidate_.empty()) {
+                peaks = peak_local_max_3d(field, original_distance_, overlap_mask_, config_);
+            } else {
+                // The overlap mask only grows: masked candidates are dropped for good.
+                const uint8_t* M = overlap_mask_.data.data();
+                candidates_.erase(std::remove_if(candidates_.begin(), candidates_.end(), [&](long i) { return M[i] > 0; }),
+                                  candidates_.end());
+                peaks = peak_local_max_3d(field, original_distance_, overlap_mask_, config_, candidates_);
+            }
             peak_cache_.resize(peaks.rows());
             for (int i = 0; i < peaks.rows(); ++i) peak_cache_[i] = peaks.row(i).transpose();
             return peaks;
         }
-        return peak_local_max_3d_incremental(field, original_distance_, overlap_mask_, config_,
-                                             test_blocks_, recon_edt_.block_size(), peak_cache_);
+        return peak_local_max_3d_incremental(field, original_distance_, overlap_mask_, config_, test_blocks_,
+                                             recon_edt_.block_size(), peak_cache_,
+                                             candidate_.empty() ? nullptr : candidate_.data());
     }
 
     /**
