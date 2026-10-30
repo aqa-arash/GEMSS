@@ -657,10 +657,12 @@ public:
           target_(target),
           recon_mask_(recon_mask),
           config_(config),
+          nx_(static_cast<int>(target.nx())),
+          ny_(static_cast<int>(target.ny())),
+          nz_(static_cast<int>(target.nz())),
           overlap_mask_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
           recon_distance_(target.nx(), target.ny(), target.nz(), target.voxel_size, target.origin),
-          recon_edt_(static_cast<int>(target.nx()), static_cast<int>(target.ny()), static_cast<int>(target.nz()),
-                     std::max(8, config.search_window))  // blocks at least as wide as the search window
+          recon_edt_(nx_, ny_, nz_, std::max(8, config.search_window))  // blocks at least as wide as the search window
     {
         if (recon_mask.shape != target.shape || original_distance.shape != target.shape) {
             throw std::invalid_argument("MultisphereSolver: grid shapes must match.");
@@ -731,8 +733,7 @@ public:
 
             // B. Find and filter the peaks
             Eigen::MatrixX4f peaks = find_peaks(field, distance_updated);
-            peaks = filter_and_shift_peaks(peaks, sphere_table, field, static_cast<int>(target_.nx()),
-                                           static_cast<int>(target_.ny()), static_cast<int>(target_.nz()), config_);
+            peaks = filter_and_shift_peaks(peaks, sphere_table, field, nx_, ny_, nz_, config_);
 
             // C. Accept the peaks as spheres, or retry with a larger weight
             if (peaks.rows() == 0) {
@@ -754,6 +755,7 @@ private:
     const VoxelGrid<uint8_t>& target_;           ///< target voxel grid
     VoxelGrid<uint8_t>& recon_mask_;             ///< union of the accepted spheres
     MultisphereConfig config_;
+    int nx_, ny_, nz_;                           ///< grid size
 
     VoxelGrid<uint8_t> overlap_mask_;  ///< voxels near accepted spheres, excluded from the peak search
     VoxelGrid<float> recon_distance_;  ///< distance field of the reconstruction, updated by recon_edt_
@@ -776,8 +778,8 @@ private:
      *        below -medial_flux_threshold. Voxels too close to the border for the flux stencil are kept.
      */
     void find_medial_candidates() {
-        const int nz = static_cast<int>(target_.nz());
-        const long sy = nz, sx = static_cast<long>(target_.ny()) * nz;
+        const int nz = nz_;
+        const long sy = nz, sx = static_cast<long>(ny_) * nz;
         const float* D = original_distance_.data.data();
         const long n = static_cast<long>(original_distance_.data.size());
         const float threshold = config_.medial_flux_threshold;
@@ -893,9 +895,7 @@ private:
      */
     void rasterize_reconstruction(const Eigen::MatrixX4f& spheres) {
         if (spheres.rows() == 0) return;
-        const int n_x = static_cast<int>(recon_mask_.nx());
-        const int n_y = static_cast<int>(recon_mask_.ny());
-        const int n_z = static_cast<int>(recon_mask_.nz());
+        const int n_x = nx_, n_y = ny_, n_z = nz_;
         const long stride_x = static_cast<long>(n_y) * n_z;
         uint8_t* mask = recon_mask_.data.data();
         const uint8_t* target = target_.data.data();

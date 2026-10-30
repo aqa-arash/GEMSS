@@ -41,11 +41,9 @@ namespace GEMSS {
 /**
  * @brief Incremental Euclidean distance transform of a growing binary mask.
  *
- * Usage: mark the x-line (y, z) of every voxel that changes from 0 to 1 with mark_line(), then call update().
- * The mask must not change in any other way between two updates; otherwise call invalidate() first.
- * After each update, changed_blocks() flags the blocks (block^3 voxels) in which a distance changed; only the
- * first update (or the first after invalidate()) reports all_changed() instead. Later stages use this to limit
- * their work to changed regions.
+ * Mark the x-line (y, z) of every voxel that changes from 0 to 1 with mark_line(), then call update(). Any other
+ * change of the mask requires invalidate(). After an update, changed_blocks() flags the blocks in which a
+ * distance changed; the first update reports all_changed() instead.
  */
 class IncrementalEDT {
 public:
