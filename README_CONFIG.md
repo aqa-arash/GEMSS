@@ -16,6 +16,7 @@ struct MultisphereConfig {
     float min_center_distance_rel = 1.4f; // min center distance (relative)
     int search_window = 2;       // neighbor distance for peaks
     float radius_offset_vox = 0.5f; // radius correction
+    float medial_flux_threshold = 0.05f; // peak candidates: medial axis of the target (< 0 = every voxel)
 
 
     // --- Convergence & limits ---
@@ -49,6 +50,7 @@ struct MultisphereConfig {
     * **Warning (Choking Limit)**: If the minimum allowable radius falls below $k^2$, the required spacing exceeds the radius itself ($d > R$). In converging geometries (e.g., conical tips), the oversized exclusion zone chokes the domain, and new spheres may fail to generate in these regions.
 * **search_window**: The number of cells looked at from each direction to assess whether the current cell is a local maximum. The default is `2`. To avoid voxelization error, it can be set to higher values to smooth the surface of the geometry. Empirically, a value equal to 4% of the voxelization resolution (`div`) has shown to perform well for complex geometries like sand particle scans.
 * **radius_offset_vox**: Correction factor added to the radius during peak detection to better fit the original shape. Default is approximately half a voxel (`0.5f`), which empirically improves reconstruction quality, it could cause stall at high precision due to increaseed out of shape error. Adjust with caution.
+* **medial_flux_threshold**: Peaks are searched only on the medial axis of the target: voxels where the average outward flux of the distance-field gradient through the 26 neighbours is below `-medial_flux_threshold`. The set is computed once per reconstruction from the target grid (so each fragment uses its own). Default `0.05`; it makes the peak search several times cheaper and gives the same or nearly the same reconstruction. Larger values drop more medial points and can reduce the number of spheres; a negative value searches every voxel.
 * **min_radius_vox**: Minimum sphere radius in voxels. Consider setting it to `2-4%` of the voxelization resolution (`div`), to capture small features while avoiding an excessive number of tiny spheres due to discretization error. Default is `2` voxels for `div = 100`. 
 
 ### Convergence & Limits

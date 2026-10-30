@@ -359,13 +359,15 @@ inline void export_sphere_pack_json(const SpherePack& sp, const std::string& out
     write_num(sp.principal_moments.x()); f << ", ";
     write_num(sp.principal_moments.y()); f << ", ";
     write_num(sp.principal_moments.z());
-    f << "]\n";
+    f << "],\n";
 
     // principal_extents 
     f << " \"principal_extents\": [";
     write_num(sp.principal_extents.x()); f << ", ";
     write_num(sp.principal_extents.y()); f << ", ";
     write_num(sp.principal_extents.z());
+    f << "]\n";
+
     
 
     f << "}\n";

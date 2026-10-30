@@ -19,6 +19,7 @@ struct MultisphereConfig {
     int search_window = 5;       // neighbor distance for peaks
     float radius_offset_vox = 0.4f; // radius correction
     int min_radius_vox = 4;      // min sphere radius (voxels)
+    float medial_flux_threshold = 0.05f; // peaks are searched where the average outward flux of grad(distance) < -threshold (medial axis); < 0 searches every voxel
 
 
     // --- Convergence & limits ---

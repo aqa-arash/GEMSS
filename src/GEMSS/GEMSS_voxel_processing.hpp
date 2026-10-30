@@ -141,68 +141,102 @@ inline float check_axis_shift(
 }
 
 /**
- * @brief Determines sub-voxel shift for local maxima.
- * @param field Voxel grid field.
- * @param idx Voxel index.
- * @param epsilon Tolerance.
- * @return Sub-voxel shift vector.
+ * @brief Field accessor for a stored float grid, for the functions that accept any field (F[i], linear index,
+ *        z fastest). See SummedField for a field that is computed on access.
  */
+struct GridField {
+    const float* data;  ///< grid values
+
+    /// Value at linear index i.
+    float operator[](long i) const { return data[i]; }
+};
+
 /**
- * @brief Determines sub-voxel shift for local maxima utilizing a zero-bounds-check fast path.
+ * @brief Sub-voxel shift of a local maximum.
+ *
+ * Along each axis, the shift is +1 (or -1) if the neighbour on that side has the same value (within epsilon)
+ * and the next one is lower, i.e. the maximum is a plateau of two voxels. Interior voxels take a path without
+ * bound checks; the boundary path follows check_axis_shift().
+ *
+ * @param F Field accessor, F[i] with i the linear index (z fastest).
+ * @param nx, ny, nz Grid size.
+ * @param idx Voxel of the maximum.
+ * @param epsilon Tolerance for equal values.
+ * @return Shift direction per axis (each -1, 0 or 1).
+ */
+template <typename Field>
+inline Eigen::Vector3f shift_voxel_center(
+    const Field& F,
+    int nx, int ny, int nz,
+    const Eigen::Vector3i& idx,
+    float epsilon = 1e-5f)
+{
+    const int x = idx.x(), y = idx.y(), z = idx.z();
+    const long stride_y = nz;
+    const long stride_x = static_cast<long>(ny) * nz;
+    const long base_idx = x * stride_x + y * stride_y + z;
+    const float val = F[base_idx];
+
+    // FAST-PATH: Strictly interior voxels (avoids 36 conditional bounds checks)
+    if (x >= 2 && x < nx - 2 && y >= 2 && y < ny - 2 && z >= 2 && z < nz - 2) {
+        float sx = 0.0f, sy = 0.0f, sz = 0.0f;
+
+        // X-axis check
+        if (std::abs(F[base_idx + stride_x] - val) <= epsilon &&
+            F[base_idx + 2 * stride_x] < val - epsilon) sx = 1.0f;
+        else if (std::abs(F[base_idx - stride_x] - val) <= epsilon &&
+                 F[base_idx - 2 * stride_x] < val - epsilon) sx = -1.0f;
+
+        // Y-axis check
+        if (std::abs(F[base_idx + stride_y] - val) <= epsilon &&
+            F[base_idx + 2 * stride_y] < val - epsilon) sy = 1.0f;
+        else if (std::abs(F[base_idx - stride_y] - val) <= epsilon &&
+                 F[base_idx - 2 * stride_y] < val - epsilon) sy = -1.0f;
+
+        // Z-axis check
+        if (std::abs(F[base_idx + 1] - val) <= epsilon &&
+            F[base_idx + 2] < val - epsilon) sz = 1.0f;
+        else if (std::abs(F[base_idx - 1] - val) <= epsilon &&
+                 F[base_idx - 2] < val - epsilon) sz = -1.0f;
+
+        return Eigen::Vector3f(sx, sy, sz);
+    }
+
+    // SLOW-PATH: Boundary voxels fallback (same rules as check_axis_shift)
+    auto axis_shift = [&](int dx, int dy, int dz) -> float {
+        const int n1_x = x + dx, n1_y = y + dy, n1_z = z + dz;
+        if (n1_x < 0 || n1_x >= nx || n1_y < 0 || n1_y >= ny || n1_z < 0 || n1_z >= nz) return 0.0f;
+        const float val_n1 = F[n1_x * stride_x + n1_y * stride_y + n1_z];
+        if (std::abs(val_n1 - val) > epsilon) return 0.0f;
+        const int n2_x = x + dx * 2, n2_y = y + dy * 2, n2_z = z + dz * 2;
+        if (n2_x < 0 || n2_x >= nx || n2_y < 0 || n2_y >= ny || n2_z < 0 || n2_z >= nz) return (float)dx;
+        const float val_n2 = F[n2_x * stride_x + n2_y * stride_y + n2_z];
+        if (val_n2 < val - epsilon) return (float)dx;
+        return 0.0f;
+    };
+    float sx = axis_shift(1, 0, 0);
+    if (sx == 0.0f) sx = axis_shift(-1, 0, 0);
+    float sy = axis_shift(0, 1, 0);
+    if (sy == 0.0f) sy = axis_shift(0, -1, 0);
+    float sz = axis_shift(0, 0, 1);
+    if (sz == 0.0f) sz = axis_shift(0, 0, -1);
+    return Eigen::Vector3f(sx, sy, sz);
+}
+
+/**
+ * @brief Sub-voxel shift of a local maximum of a stored field (see the templated shift_voxel_center()).
+ * @param field Voxel grid field.
+ * @param idx Voxel of the maximum.
+ * @param epsilon Tolerance for equal values.
+ * @return Shift direction per axis (each -1, 0 or 1).
  */
 inline Eigen::Vector3f shift_voxel_center(
     const VoxelGrid<float>& field,
     const Eigen::Vector3i& idx,
     float epsilon = 1e-5f)
 {
-    int x = idx.x(), y = idx.y(), z = idx.z();
-    int nx = static_cast<int>(field.nx());
-    int ny = static_cast<int>(field.ny());
-    int nz = static_cast<int>(field.nz());
-
-    // FAST-PATH: Strictly interior voxels (avoids 36 conditional bounds checks)
-    if (x >= 2 && x < nx - 2 && y >= 2 && y < ny - 2 && z >= 2 && z < nz - 2) {
-        const float* data_ptr = field.data.data();
-        size_t stride_y = nz;
-        size_t stride_x = ny * nz;
-        size_t base_idx = x * stride_x + y * stride_y + z;
-
-        float val = data_ptr[base_idx];
-        float sx = 0.0f, sy = 0.0f, sz = 0.0f;
-
-        // X-axis check 
-        if (std::abs(data_ptr[base_idx + stride_x] - val) <= epsilon && 
-            data_ptr[base_idx + 2 * stride_x] < val - epsilon) sx = 1.0f;
-        else if (std::abs(data_ptr[base_idx - stride_x] - val) <= epsilon && 
-                 data_ptr[base_idx - 2 * stride_x] < val - epsilon) sx = -1.0f;
-
-        // Y-axis check
-        if (std::abs(data_ptr[base_idx + stride_y] - val) <= epsilon && 
-            data_ptr[base_idx + 2 * stride_y] < val - epsilon) sy = 1.0f;
-        else if (std::abs(data_ptr[base_idx - stride_y] - val) <= epsilon && 
-                 data_ptr[base_idx - 2 * stride_y] < val - epsilon) sy = -1.0f;
-
-        // Z-axis check 
-        if (std::abs(data_ptr[base_idx + 1] - val) <= epsilon && 
-            data_ptr[base_idx + 2] < val - epsilon) sz = 1.0f;
-        else if (std::abs(data_ptr[base_idx - 1] - val) <= epsilon && 
-                 data_ptr[base_idx - 2] < val - epsilon) sz = -1.0f;
-
-        return Eigen::Vector3f(sx, sy, sz);
-    }
-
-    // SLOW-PATH: Boundary voxels fallback
-    float val = field(x, y, z);
-    float sx = check_axis_shift(field, x, y, z, 1, 0, 0, val, epsilon);
-    if (sx == 0.0f) sx = check_axis_shift(field, x, y, z, -1, 0, 0, val, epsilon);
-
-    float sy = check_axis_shift(field, x, y, z, 0, 1, 0, val, epsilon);
-    if (sy == 0.0f) sy = check_axis_shift(field, x, y, z, 0, -1, 0, val, epsilon);
-
-    float sz = check_axis_shift(field, x, y, z, 0, 0, 1, val, epsilon);
-    if (sz == 0.0f) sz = check_axis_shift(field, x, y, z, 0, 0, -1, val, epsilon);
-
-    return Eigen::Vector3f(sx, sy, sz);
+    return shift_voxel_center(GridField{field.data.data()}, static_cast<int>(field.nx()), static_cast<int>(field.ny()),
+                              static_cast<int>(field.nz()), idx, epsilon);
 }
 
 /**
