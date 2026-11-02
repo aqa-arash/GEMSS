@@ -136,7 +136,8 @@ inline SpherePack multisphere_from_voxels(
     }
     // =========================================================================
 
-    float final_precision = compute_voxel_precision(input_grid, recon_mask);
+    const VoxelOverlap overlap = voxel_overlap(input_grid, recon_mask);
+    float final_precision = static_cast<float>(overlap.dice());
 
     if(config.show_progress) {
         std::cout << "Final Precision: " << final_precision << std::endl;
@@ -165,6 +166,11 @@ inline SpherePack multisphere_from_voxels(
     result.is_2d = config.is_2d || (input_grid.nz() == 1);
     result.density = config.density; // Set density for physics computations
     result.precision = final_precision;
+    // Target and union volume (areas for a planar pack), independent of compute_physics
+    const double vs = input_grid.voxel_size;
+    const double cell = result.is_2d ? vs * vs : vs * vs * vs;
+    result.target_volume = static_cast<float>(overlap.target * cell);
+    result.recon_volume = static_cast<float>(overlap.reconstruction * cell);
     if (config.compute_physics == 1) {
         // Compute physical properties of the multisphere union
         compute_multisphere_physics(result, recon_mask);

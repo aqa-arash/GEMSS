@@ -49,7 +49,9 @@ struct SpherePack {
     bool is_2d = false;   // planar pack: physics is area/Izz, split collapses out-of-plane axis
 
     // Global Physical Properties of the Multisphere Union
-    float precision = 0.0f;           ///< Final precision achieved
+    float precision = 0.0f;           ///< Final precision achieved (voxel Dice score of union and target)
+    float target_volume = 0.0f;       ///< Volume of the voxelized target (area for a planar pack)
+    float recon_volume = 0.0f;        ///< Volume of the sphere union on the reconstruction grid (area for a planar pack)
     float density = 1.0f;             ///< Material density for mass properties
     float mass = 0.0f;                ///< Mass of the union of spheres
     float bounding_radius= 0.0f;  // Bounding sphere radius of the union
