@@ -188,6 +188,7 @@ int main() {
 
   // 4. Access Computed Physics Properties
   std::cout << "Mass: " << sp.mass << "\n";
+  std::cout << "Union volume: " << sp.recon_volume << " (target: " << sp.target_volume << ")\n";
   std::cout << "Center of Mass:\n" << sp.center_of_mass << "\n";
   std::cout << "Inertia Tensor:\n" << sp.inertia_tensor << "\n";
   std::cout << "Principal Extents (L, I, S): "

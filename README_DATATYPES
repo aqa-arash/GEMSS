@@ -24,6 +24,8 @@ Construct with `SpherePack(centers,radii)` or the empty default constructor. Mis
 | `radii` | `Eigen::VectorXf`, empty | N physical radii. |
 | `is_2d` | `bool`, false | Planar pack marker. |
 | `precision` | `float`, 0 | Dimensionless voxel Dice score, not a volume. |
+| `target_volume` | `float`, 0 | Volume of the voxelized target on the reconstruction grid (area in 2D). |
+| `recon_volume` | `float`, 0 | Volume of the sphere union on the reconstruction grid (area in 2D). |
 | `density` | `float`, 1 | Uniform material density. |
 | `mass` | `float`, 0 | Mass from the selected occupancy mask. |
 | `bounding_radius` | `float`, 0 | Maximum sphere-center distance from CoM plus radius; planar mode uses XY distance. |
@@ -33,9 +35,11 @@ Construct with `SpherePack(centers,radii)` or the empty default constructor. Mis
 | `principal_moments` | `Eigen::Vector3f`, zero | 3D eigenvalues ascending, paired with principal-axis columns. |
 | `principal_extents` | `Eigen::Vector3f`, zero | Full principal-frame sphere-union lengths, descending. |
 
-Physical units: mass is density × length³ in 3D or density × length² in 2D; inertia and principal moments have units of mass × length². Centers, radii, bounding radius, and principal extents are lengths. Precision is dimensionless.
+Physical units: mass is density × length³ in 3D or density × length² in 2D; inertia and principal moments have units of mass × length². `target_volume` and `recon_volume` are length³ in 3D and length² in 2D. Centers, radii, bounding radius, and principal extents are lengths. Precision is dimensionless.
 
-`num_spheres()` returns the radius count. `min_radius()` and `max_radius()` return radius extrema, or zero for an empty pack. There is no `volume` field: with positive density, `mass/density` gives volume in 3D or area in 2D.
+`num_spheres()` returns the radius count. `min_radius()` and `max_radius()` return radius extrema, or zero for an empty pack.
+
+`target_volume` and `recon_volume` are set by every reconstruction (`multisphere_from_voxels`, `multisphere_from_mesh`, and each fragment of a split), whatever `compute_physics` is, from the final voxel count after optional pruning: voxels × voxel size³ (voxel size² in 2D). The reconstruction error in volume is `recon_volume / target_volume - 1`. For fragmentation, compare the parent's `recon_volume` with the sum of the fragments' `recon_volume` to track the geometric volume change of a split; the two are counted on different grids, so a single split carries a discretisation difference of a few tenths of a percent. With `conserve_mass`, the fragments' mass still matches the parent through the density, while these volumes keep the geometric value. `mass/density` gives the volume of the mask selected by `compute_physics` (union in mode 1, target in mode 2). Both fields are written to and read from JSON.
 
 Physics is populated in modes 1 and 2. Editing centers/radii does not automatically update properties. Mask-based values describe reconstructed occupancy in mode 1 and target occupancy in mode 2, not exact analytic integration of intersecting spheres.
 

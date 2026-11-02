@@ -171,6 +171,47 @@ inline Eigen::Vector3f shift_voxel_center(
 }
 
 
+/// Occupied-voxel counts of a target and a reconstruction mask (> 0 is occupied).
+struct VoxelOverlap {
+    size_t target = 0;          ///< target voxels
+    size_t reconstruction = 0;  ///< reconstruction voxels
+    size_t intersection = 0;    ///< voxels in both
+
+    /// Dice coefficient 2 |T and R| / (|T| + |R|); 1 for two empty masks, 0 if only one is empty.
+    double dice() const {
+        if (target == 0 && reconstruction == 0) return 1.0;
+        if (target == 0 || reconstruction == 0) return 0.0;
+        return (2.0 * static_cast<double>(intersection)) / static_cast<double>(target + reconstruction);
+    }
+};
+
+/**
+ * @brief Counts the occupied voxels of a target and a reconstruction mask and their intersection.
+ * @throws std::invalid_argument if the shapes differ.
+ */
+template <typename T, typename U>
+VoxelOverlap voxel_overlap(const VoxelGrid<T>& target, const VoxelGrid<U>& reconstruction)
+{
+    if (target.nx() != reconstruction.nx() || target.ny() != reconstruction.ny() || target.nz() != reconstruction.nz()) {
+        throw std::invalid_argument("Shapes must match.");
+    }
+    size_t target_vol = 0, recon_vol = 0, intersection = 0;
+    const size_t n = target.data.size();
+    #pragma omp parallel for reduction(+:target_vol, recon_vol, intersection)
+    for (size_t i = 0; i < n; ++i) {
+        const bool t = (target.data[i] > static_cast<T>(0));
+        const bool r = (reconstruction.data[i] > static_cast<U>(0));
+        target_vol += t;
+        recon_vol += r;
+        intersection += (t && r);
+    }
+    VoxelOverlap overlap;
+    overlap.target = target_vol;
+    overlap.reconstruction = recon_vol;
+    overlap.intersection = intersection;
+    return overlap;
+}
+
 /**
  * @brief Computes reconstruction precision based on mismatch.
  * @tparam T Target voxel grid data type.
@@ -183,29 +224,7 @@ template <typename T, typename U>
 double compute_voxel_precision(const VoxelGrid<T>& target,
                                const VoxelGrid<U>& reconstruction)
 {
-    if (target.nx() != reconstruction.nx() || target.ny() != reconstruction.ny() || target.nz() != reconstruction.nz()) {
-        throw std::invalid_argument("Shapes must match.");
-    }
-
-    size_t target_vol = 0;
-    size_t recon_vol = 0;
-    size_t intersection = 0;
-    const size_t n = target.data.size();
-
-    #pragma omp parallel for reduction(+:target_vol, recon_vol, intersection)
-    for (size_t i = 0; i < n; ++i) {
-        bool t = (target.data[i] > static_cast<T>(0));
-        bool r = (reconstruction.data[i] > static_cast<U>(0));
-        
-        if (t) target_vol++;
-        if (r) recon_vol++;
-        if (t && r) intersection++;
-    }
-
-    if (target_vol == 0 && recon_vol == 0) return 1.0;
-    if (target_vol == 0 || recon_vol == 0) return 0.0;
-    
-    return (2.0 * static_cast<double>(intersection)) / static_cast<double>(target_vol + recon_vol);
+    return voxel_overlap(target, reconstruction).dice();
 }
 
 /**
