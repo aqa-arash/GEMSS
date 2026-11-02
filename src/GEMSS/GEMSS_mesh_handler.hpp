@@ -50,10 +50,26 @@
 namespace GEMSS {
 
 /**
+ * @brief Enclosed volume of a closed triangle mesh (divergence theorem).
+ * @param mesh Input STLMesh with consistently oriented triangles.
+ * @return Volume in mesh units cubed.
+ */
+inline double mesh_volume(const STLMesh& mesh) {
+    double volume = 0.0;
+    for (int f = 0; f < mesh.triangles.rows(); ++f) {
+        const Eigen::Vector3d a = mesh.vertices.row(mesh.triangles(f, 0)).cast<double>().transpose();
+        const Eigen::Vector3d b = mesh.vertices.row(mesh.triangles(f, 1)).cast<double>().transpose();
+        const Eigen::Vector3d c = mesh.vertices.row(mesh.triangles(f, 2)).cast<double>().transpose();
+        volume += a.dot(b.cross(c));
+    }
+    return std::abs(volume) / 6.0;
+}
+
+/**
  * @brief Robust voxelizer using generalized winding number.
  *        Best for "dirty" meshes (holes, self-intersections, internal faces).
  * @param mesh Input STLMesh.
- * @param div Voxel grid division (resolution).
+ * @param div Voxel grid division (resolution); see volumetric_div for the voxel size.
  * @param padding Grid padding.
  * @return VoxelGrid<uint8_t> representing mesh occupancy.
  */
@@ -66,6 +82,10 @@ inline VoxelGrid<uint8_t> mesh_to_binary_grid(const STLMesh& mesh, MultisphereCo
     float min_extent = extents.minCoeff();
     if (min_extent <= 1e-6) min_extent = (extents.maxCoeff() > 0 ? extents.maxCoeff() : 1.0f);
     float voxel_size = min_extent / static_cast<float>(config.div);
+    if (config.volumetric_div) {
+        const float volume = static_cast<float>(mesh_volume(mesh));
+        if (volume > 0.0f) voxel_size = std::min(std::cbrt(volume) / static_cast<float>(config.div), min_extent / 2.0f);
+    }
 
     int nx = std::ceil(extents.x() / voxel_size) + 2 * config.padding;
     int ny = std::ceil(extents.y() / voxel_size) + 2 * config.padding;

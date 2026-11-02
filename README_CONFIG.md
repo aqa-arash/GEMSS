@@ -8,6 +8,7 @@ This document explains the `MultisphereConfig` structure found in `src/GEMSS/GEM
 struct MultisphereConfig {
     // --- Required for mesh reconstruction ---
     int div = 100;               // grid resolution
+    bool volumetric_div = false; // voxel size from cbrt(volume) instead of the smallest extent
     int padding = 2;             // grid padding
     float minimum_radius_real = 0.0f; // min sphere radius (real units)
     bool confine_mesh = false;   // confine to mesh boundary
@@ -39,6 +40,7 @@ struct MultisphereConfig {
 
 ### Required parameters for reconstruction from mesh
 * **div**: Voxel grid division. This determines the resolution by computing a cubic cell size, calculated as `min(AABB) / div` (where AABB is the axis-aligned bounding box). A rectangular grid is then generated based on this cell size.
+* **volumetric_div**: How `div` sets the voxel size. `false` (default): `min(AABB) / div`. `true`: `cbrt(V) / div`, with `V` the enclosed mesh volume (or the parent's volume when splitting), but at least 2 voxels across the smallest extent so a 3D particle is never treated as a single slice. The volumetric rule resolves every particle relative to its size rather than its thickness: flat or elongated particles get far fewer voxels (a flaky rock: 79 M → 5 M voxels at `div = 150`), compact ones slightly more. Very thin sheets may then be poorly resolved across their thickness; that is a modelling choice of the user.
 * **padding**: Padding added to each side of the bounding box grid, measured in voxels.
 * **minimum_radius_real**: Minimum sphere radius in real physical units (e.g., millimeters). If set to `0.0f`, the solver uses `min_radius_vox`. When positive, it is converted to voxel units using `ceil(minimum_radius_real / voxel_size)` and solver uses max of that and `min_radius_vox` only if the converted value is greater than 1.
 * **confine_mesh**: Confine spheres strictly to the mesh boundary's Signed Distance Field (SDF).
