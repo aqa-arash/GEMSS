@@ -99,110 +99,117 @@ void apply_kernel_to_grid(
 }
 
 /**
- * @brief Helper function to check axis direction for peak shifting.
- * @param field Voxel grid field.
- * @param cx Center x.
- * @param cy Center y.
- * @param cz Center z.
- * @param dx Direction x.
- * @param dy Direction y.
- * @param dz Direction z.
- * @param current_val Current value.
- * @param epsilon Tolerance.
- * @return Shift value (1.0, -1.0, or 0.0).
+ * @brief Sub-voxel shift of a local maximum.
+ *
+ * Along each axis, the shift is +1 (or -1) if the neighbour on that side has the same value (within epsilon)
+ * and the next one is lower, i.e. the maximum is a plateau of two voxels. Interior voxels take a path without
+ * bound checks.
+ *
+ * @param F Field accessor, F[i] with i the linear index (z fastest).
+ * @param nx, ny, nz Grid size.
+ * @param idx Voxel of the maximum.
+ * @param epsilon Tolerance for equal values.
+ * @return Shift direction per axis (each -1, 0 or 1).
  */
-inline float check_axis_shift(
-    const VoxelGrid<float>& field,
-    int cx, int cy, int cz,
-    int dx, int dy, int dz,
-    float current_val,
-    float epsilon)
-{
-    int nx = field.nx();
-    int ny = field.ny();
-    int nz = field.nz();
-
-    int n1_x = cx + dx;
-    int n1_y = cy + dy;
-    int n1_z = cz + dz;
-    if (n1_x < 0 || n1_x >= nx || n1_y < 0 || n1_y >= ny || n1_z < 0 || n1_z >= nz) return 0.0f;
-    float val_n1 = field(n1_x, n1_y, n1_z);
-    if (std::abs(val_n1 - current_val) > epsilon) return 0.0f;
-
-    int n2_x = cx + (dx * 2);
-    int n2_y = cy + (dy * 2);
-    int n2_z = cz + (dz * 2);
-    if (n2_x < 0 || n2_x >= nx || n2_y < 0 || n2_y >= ny || n2_z < 0 || n2_z >= nz) return (float)dx;
-    float val_n2 = field(n2_x, n2_y, n2_z);
-    if (val_n2 < current_val - epsilon) {
-        return (float)dx;
-    }
-    return 0.0f;
-}
-
-/**
- * @brief Determines sub-voxel shift for local maxima.
- * @param field Voxel grid field.
- * @param idx Voxel index.
- * @param epsilon Tolerance.
- * @return Sub-voxel shift vector.
- */
-/**
- * @brief Determines sub-voxel shift for local maxima utilizing a zero-bounds-check fast path.
- */
+template <typename Field>
 inline Eigen::Vector3f shift_voxel_center(
-    const VoxelGrid<float>& field,
+    const Field& F,
+    int nx, int ny, int nz,
     const Eigen::Vector3i& idx,
     float epsilon = 1e-5f)
 {
-    int x = idx.x(), y = idx.y(), z = idx.z();
-    int nx = static_cast<int>(field.nx());
-    int ny = static_cast<int>(field.ny());
-    int nz = static_cast<int>(field.nz());
+    const int x = idx.x(), y = idx.y(), z = idx.z();
+    const long stride_y = nz;
+    const long stride_x = static_cast<long>(ny) * nz;
+    const long base_idx = x * stride_x + y * stride_y + z;
+    const float val = F[base_idx];
 
     // FAST-PATH: Strictly interior voxels (avoids 36 conditional bounds checks)
     if (x >= 2 && x < nx - 2 && y >= 2 && y < ny - 2 && z >= 2 && z < nz - 2) {
-        const float* data_ptr = field.data.data();
-        size_t stride_y = nz;
-        size_t stride_x = ny * nz;
-        size_t base_idx = x * stride_x + y * stride_y + z;
-
-        float val = data_ptr[base_idx];
         float sx = 0.0f, sy = 0.0f, sz = 0.0f;
 
-        // X-axis check 
-        if (std::abs(data_ptr[base_idx + stride_x] - val) <= epsilon && 
-            data_ptr[base_idx + 2 * stride_x] < val - epsilon) sx = 1.0f;
-        else if (std::abs(data_ptr[base_idx - stride_x] - val) <= epsilon && 
-                 data_ptr[base_idx - 2 * stride_x] < val - epsilon) sx = -1.0f;
+        // X-axis check
+        if (std::abs(F[base_idx + stride_x] - val) <= epsilon &&
+            F[base_idx + 2 * stride_x] < val - epsilon) sx = 1.0f;
+        else if (std::abs(F[base_idx - stride_x] - val) <= epsilon &&
+                 F[base_idx - 2 * stride_x] < val - epsilon) sx = -1.0f;
 
         // Y-axis check
-        if (std::abs(data_ptr[base_idx + stride_y] - val) <= epsilon && 
-            data_ptr[base_idx + 2 * stride_y] < val - epsilon) sy = 1.0f;
-        else if (std::abs(data_ptr[base_idx - stride_y] - val) <= epsilon && 
-                 data_ptr[base_idx - 2 * stride_y] < val - epsilon) sy = -1.0f;
+        if (std::abs(F[base_idx + stride_y] - val) <= epsilon &&
+            F[base_idx + 2 * stride_y] < val - epsilon) sy = 1.0f;
+        else if (std::abs(F[base_idx - stride_y] - val) <= epsilon &&
+                 F[base_idx - 2 * stride_y] < val - epsilon) sy = -1.0f;
 
-        // Z-axis check 
-        if (std::abs(data_ptr[base_idx + 1] - val) <= epsilon && 
-            data_ptr[base_idx + 2] < val - epsilon) sz = 1.0f;
-        else if (std::abs(data_ptr[base_idx - 1] - val) <= epsilon && 
-                 data_ptr[base_idx - 2] < val - epsilon) sz = -1.0f;
+        // Z-axis check
+        if (std::abs(F[base_idx + 1] - val) <= epsilon &&
+            F[base_idx + 2] < val - epsilon) sz = 1.0f;
+        else if (std::abs(F[base_idx - 1] - val) <= epsilon &&
+                 F[base_idx - 2] < val - epsilon) sz = -1.0f;
 
         return Eigen::Vector3f(sx, sy, sz);
     }
 
     // SLOW-PATH: Boundary voxels fallback
-    float val = field(x, y, z);
-    float sx = check_axis_shift(field, x, y, z, 1, 0, 0, val, epsilon);
-    if (sx == 0.0f) sx = check_axis_shift(field, x, y, z, -1, 0, 0, val, epsilon);
-
-    float sy = check_axis_shift(field, x, y, z, 0, 1, 0, val, epsilon);
-    if (sy == 0.0f) sy = check_axis_shift(field, x, y, z, 0, -1, 0, val, epsilon);
-
-    float sz = check_axis_shift(field, x, y, z, 0, 0, 1, val, epsilon);
-    if (sz == 0.0f) sz = check_axis_shift(field, x, y, z, 0, 0, -1, val, epsilon);
-
+    auto axis_shift = [&](int dx, int dy, int dz) -> float {
+        const int n1_x = x + dx, n1_y = y + dy, n1_z = z + dz;
+        if (n1_x < 0 || n1_x >= nx || n1_y < 0 || n1_y >= ny || n1_z < 0 || n1_z >= nz) return 0.0f;
+        const float val_n1 = F[n1_x * stride_x + n1_y * stride_y + n1_z];
+        if (std::abs(val_n1 - val) > epsilon) return 0.0f;
+        const int n2_x = x + dx * 2, n2_y = y + dy * 2, n2_z = z + dz * 2;
+        if (n2_x < 0 || n2_x >= nx || n2_y < 0 || n2_y >= ny || n2_z < 0 || n2_z >= nz) return (float)dx;
+        const float val_n2 = F[n2_x * stride_x + n2_y * stride_y + n2_z];
+        if (val_n2 < val - epsilon) return (float)dx;
+        return 0.0f;
+    };
+    float sx = axis_shift(1, 0, 0);
+    if (sx == 0.0f) sx = axis_shift(-1, 0, 0);
+    float sy = axis_shift(0, 1, 0);
+    if (sy == 0.0f) sy = axis_shift(0, -1, 0);
+    float sz = axis_shift(0, 0, 1);
+    if (sz == 0.0f) sz = axis_shift(0, 0, -1);
     return Eigen::Vector3f(sx, sy, sz);
+}
+
+
+/// Occupied-voxel counts of a target and a reconstruction mask (> 0 is occupied).
+struct VoxelOverlap {
+    size_t target = 0;          ///< target voxels
+    size_t reconstruction = 0;  ///< reconstruction voxels
+    size_t intersection = 0;    ///< voxels in both
+
+    /// Dice coefficient 2 |T and R| / (|T| + |R|); 1 for two empty masks, 0 if only one is empty.
+    double dice() const {
+        if (target == 0 && reconstruction == 0) return 1.0;
+        if (target == 0 || reconstruction == 0) return 0.0;
+        return (2.0 * static_cast<double>(intersection)) / static_cast<double>(target + reconstruction);
+    }
+};
+
+/**
+ * @brief Counts the occupied voxels of a target and a reconstruction mask and their intersection.
+ * @throws std::invalid_argument if the shapes differ.
+ */
+template <typename T, typename U>
+VoxelOverlap voxel_overlap(const VoxelGrid<T>& target, const VoxelGrid<U>& reconstruction)
+{
+    if (target.nx() != reconstruction.nx() || target.ny() != reconstruction.ny() || target.nz() != reconstruction.nz()) {
+        throw std::invalid_argument("Shapes must match.");
+    }
+    size_t target_vol = 0, recon_vol = 0, intersection = 0;
+    const size_t n = target.data.size();
+    #pragma omp parallel for reduction(+:target_vol, recon_vol, intersection)
+    for (size_t i = 0; i < n; ++i) {
+        const bool t = (target.data[i] > static_cast<T>(0));
+        const bool r = (reconstruction.data[i] > static_cast<U>(0));
+        target_vol += t;
+        recon_vol += r;
+        intersection += (t && r);
+    }
+    VoxelOverlap overlap;
+    overlap.target = target_vol;
+    overlap.reconstruction = recon_vol;
+    overlap.intersection = intersection;
+    return overlap;
 }
 
 /**
@@ -217,29 +224,7 @@ template <typename T, typename U>
 double compute_voxel_precision(const VoxelGrid<T>& target,
                                const VoxelGrid<U>& reconstruction)
 {
-    if (target.nx() != reconstruction.nx() || target.ny() != reconstruction.ny() || target.nz() != reconstruction.nz()) {
-        throw std::invalid_argument("Shapes must match.");
-    }
-
-    size_t target_vol = 0;
-    size_t recon_vol = 0;
-    size_t intersection = 0;
-    const size_t n = target.data.size();
-
-    #pragma omp parallel for reduction(+:target_vol, recon_vol, intersection)
-    for (size_t i = 0; i < n; ++i) {
-        bool t = (target.data[i] > static_cast<T>(0));
-        bool r = (reconstruction.data[i] > static_cast<U>(0));
-        
-        if (t) target_vol++;
-        if (r) recon_vol++;
-        if (t && r) intersection++;
-    }
-
-    if (target_vol == 0 && recon_vol == 0) return 1.0;
-    if (target_vol == 0 || recon_vol == 0) return 0.0;
-    
-    return (2.0 * static_cast<double>(intersection)) / static_cast<double>(target_vol + recon_vol);
+    return voxel_overlap(target, reconstruction).dice();
 }
 
 /**

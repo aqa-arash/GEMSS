@@ -14,6 +14,7 @@ namespace GEMSS {
 struct MultisphereConfig {
     // --- Required for mesh reconstruction ---
     int div = 100;               // grid resolution
+    bool volumetric_div = false; // voxel size: cbrt(volume) / div, at least 2 voxels across the smallest extent (true); smallest extent / div (false)
     int padding = 2;             // grid padding
     float minimum_radius_real = 0.0f; // min sphere radius (real units)
     bool confine_mesh = false;   // confine to mesh boundary
@@ -23,6 +24,7 @@ struct MultisphereConfig {
     int search_window = 2;       // neighbor distance for peaks
     float radius_offset_vox = 0.5f; // radius correction
     int min_radius_vox = 2;      // min sphere radius (voxels)
+    float medial_flux_threshold = 0.05f; // peaks are searched where the average outward flux of grad(distance) < -threshold (medial axis); < 0 searches every voxel
 
 
     // --- Convergence & limits ---
