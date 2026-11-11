@@ -13,7 +13,7 @@ namespace GEMSS {
 
 struct MultisphereConfig {
     // --- Required for mesh reconstruction ---
-    int div = 100;               // grid resolution
+    int div = 150;               // grid resolution
     bool volumetric_div = false; // voxel size: cbrt(volume) / div, at least 2 voxels across the smallest extent (true); smallest extent / div (false)
     int padding = 2;             // grid padding
     float minimum_radius_real = 0.0f; // min sphere radius (real units)

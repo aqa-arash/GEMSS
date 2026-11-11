@@ -236,7 +236,6 @@ See the `LICENSE` file for full details.
 | **Eigen** | MPL2 | C++ Math |
 | **libigl** | MPL2 | C++ Voxelization |
 
-
 ## Author
 
 **Arash Moradian** Friedrich-Alexander-Universität Erlangen–Nürnberg (FAU)  
