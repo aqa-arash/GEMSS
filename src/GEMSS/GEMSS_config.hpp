@@ -70,9 +70,9 @@ inline std::ostream& operator<<(std::ostream& os, const MultisphereConfig& c)
        << " density " << c.density
        << " prune_isolated_spheres " << c.prune_isolated_spheres
        << " show_progress " << c.show_progress
-       << " conserve_mass " << c.conserve_mass
-       << " parent_representation_offset " << c.parent_representation_offset
-       << " fracture_plane_offset " << c.fracture_plane_offset
+       //<< " conserve_mass " << c.conserve_mass
+       //<< " parent_representation_offset " << c.parent_representation_offset
+       //<< " fracture_plane_offset " << c.fracture_plane_offset
        << " end";
     os.precision(precision);
     return os;
@@ -111,9 +111,9 @@ inline std::istream& operator>>(std::istream& is, MultisphereConfig& c)
     detail::readNamed(is, "density", c.density);
     detail::readNamed(is, "prune_isolated_spheres", c.prune_isolated_spheres);
     detail::readNamed(is, "show_progress", c.show_progress);
-    detail::readNamed(is, "conserve_mass", c.conserve_mass);
-    detail::readNamed(is, "parent_representation_offset", c.parent_representation_offset);
-    detail::readNamed(is, "fracture_plane_offset", c.fracture_plane_offset);
+    //detail::readNamed(is, "conserve_mass", c.conserve_mass);
+    //detail::readNamed(is, "parent_representation_offset", c.parent_representation_offset);
+    //detail::readNamed(is, "fracture_plane_offset", c.fracture_plane_offset);
     if (!(is >> word) || word != "end") is.setstate(std::ios::failbit);
     return is;
 }
