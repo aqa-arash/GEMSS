@@ -274,6 +274,8 @@ inline void print_sphere_pack_info(const SpherePack& sp) {
     std::cout << "      Min radius: " << sp.min_radius() << " units" << std::endl;
     std::cout << "      Accuracy: " << sp.precision << " units^3" << std::endl;
     std::cout << "      Mass of union: " << sp.mass << " units^3" << std::endl;
+    std::cout << "      Target volume: " << sp.target_volume << " units^3" << std::endl;
+    std::cout << "      Reconstruction volume: " << sp.recon_volume << " units^3" << std::endl;
     std::cout << "      Center of mass: " << sp.center_of_mass.transpose() << " units" << std::endl;
     std::cout << "      Bounding radius: " << sp.bounding_radius << " units" << std::endl;
     std::cout << "      Principal moments: " << sp.principal_moments.transpose() << " units^5" << std::endl;
@@ -330,6 +332,8 @@ inline void export_sphere_pack_json(const SpherePack& sp, const std::string& out
     f << "  \"precision\": "; write_num(sp.precision); f << ",\n";
     f << "  \"density\": "; write_num(sp.density); f << ",\n";
     f << "  \"mass\": "; write_num(sp.mass); f << ",\n";
+    f << "  \"target_volume\": "; write_num(sp.target_volume); f << ",\n";
+    f << "  \"recon_volume\": "; write_num(sp.recon_volume); f << ",\n";
     f << "  \"bounding_radius\": "; write_num(sp.bounding_radius); f << ",\n";
 
     // center_of_mass
@@ -359,13 +363,15 @@ inline void export_sphere_pack_json(const SpherePack& sp, const std::string& out
     write_num(sp.principal_moments.x()); f << ", ";
     write_num(sp.principal_moments.y()); f << ", ";
     write_num(sp.principal_moments.z());
-    f << "]\n";
+    f << "],\n";
 
     // principal_extents 
     f << " \"principal_extents\": [";
     write_num(sp.principal_extents.x()); f << ", ";
     write_num(sp.principal_extents.y()); f << ", ";
     write_num(sp.principal_extents.z());
+    f << "]\n";
+
     
 
     f << "}\n";
@@ -536,6 +542,8 @@ inline SpherePack import_vtk(const std::string& path) {
     set_scalar("precision", sp.precision);
     set_scalar("density", sp.density);
     set_scalar("mass", sp.mass);
+    set_scalar("target_volume", sp.target_volume);
+    set_scalar("recon_volume", sp.recon_volume);
     set_scalar("bounding_radius", sp.bounding_radius);
 
     auto set_vec = [&](const std::string& key, Eigen::Vector3f& target) {
