@@ -44,6 +44,7 @@ struct MultisphereConfig {
     bool conserve_mass = true;
     float parent_representation_offset = 0.0f; // offset for the voxelization of the parent from spheres -> ensures no new spheres place engulfing the old ones (shrink the target by 1 diagonal voxel)
     float fracture_plane_offset = 0.0f; // offset coefficient for fracture plane during splitting ( x * voxel size, applied to the plane normal direction, larger values creates a gap between fragments to ensure clean splitting - model sawed off at the plane without residual voxels bridging the fragments, but causes mass loss)
+    bool separate_isolated_fragments = true; // a fragment whose spheres form several unconnected networks is returned as one fragment per network
     
 };
 
@@ -78,6 +79,7 @@ inline std::ostream& operator<<(std::ostream& os, const MultisphereConfig& c)
        << " conserve_mass " << c.conserve_mass
        << " parent_representation_offset " << c.parent_representation_offset
        << " fracture_plane_offset " << c.fracture_plane_offset
+       << " separate_isolated_fragments " << c.separate_isolated_fragments
        << " end";
     os.precision(precision);
     return os;
@@ -119,6 +121,7 @@ inline std::istream& operator>>(std::istream& is, MultisphereConfig& c)
     detail::readNamed(is, "conserve_mass", c.conserve_mass);
     detail::readNamed(is, "parent_representation_offset", c.parent_representation_offset);
     detail::readNamed(is, "fracture_plane_offset", c.fracture_plane_offset);
+    detail::readNamed(is, "separate_isolated_fragments", c.separate_isolated_fragments);
     if (!(is >> word) || word != "end") is.setstate(std::ios::failbit);
     return is;
 }

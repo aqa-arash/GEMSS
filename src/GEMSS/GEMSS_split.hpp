@@ -155,7 +155,8 @@ inline std::vector<SpherePack> multisphere_from_splitted_voxelGrid(
         SpherePack sp = multisphere_from_voxels(region_grid, region_config);
 
         // 4. Spheres that do not touch form separate fragments
-        result[label - 1] = separate_sphere_networks(sp, region_grid);
+        result[label - 1] = config.separate_isolated_fragments ? separate_sphere_networks(sp, region_grid)
+                                                               : std::vector<SpherePack>{sp};
     }
 
     std::vector<SpherePack> fragments;
