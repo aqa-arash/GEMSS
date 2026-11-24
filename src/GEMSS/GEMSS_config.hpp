@@ -4,6 +4,7 @@
 
 #include <Eigen/Core>
 #include <istream>
+#include <sstream>
 #include <limits>
 #include <ostream>
 #include <string>
@@ -85,44 +86,42 @@ inline std::ostream& operator<<(std::ostream& os, const MultisphereConfig& c)
     return os;
 }
 
-namespace detail {
-// Reads "name value" and checks the name; on a mismatch the stream fails and the value is left unchanged
-template <typename T>
-inline void readNamed(std::istream& is, const char* name, T& value)
-{
-    std::string key;
-    if (!(is >> key) || key != name) { is.setstate(std::ios::failbit); return; }
-    is >> value;
-}
-} // namespace detail
-
+// Reads "name value" pairs until "end". Each value is matched to its setting by name, so the order does not
+// matter, a setting missing from the input keeps its default, and an unknown setting (e.g. from another GEMSS
+// version) is skipped with its value.
 inline std::istream& operator>>(std::istream& is, MultisphereConfig& c)
 {
     std::string word;
     if (!(is >> word) || word != "MultisphereConfig") { is.setstate(std::ios::failbit); return is; }
-    detail::readNamed(is, "div", c.div);
-    detail::readNamed(is, "volumetric_div", c.volumetric_div);
-    detail::readNamed(is, "padding", c.padding);
-    detail::readNamed(is, "minimum_radius_real", c.minimum_radius_real);
-    detail::readNamed(is, "confine_mesh", c.confine_mesh);
-    detail::readNamed(is, "min_center_distance_rel", c.min_center_distance_rel);
-    detail::readNamed(is, "search_window", c.search_window);
-    detail::readNamed(is, "radius_offset_vox", c.radius_offset_vox);
-    detail::readNamed(is, "min_radius_vox", c.min_radius_vox);
-    detail::readNamed(is, "medial_flux_threshold", c.medial_flux_threshold);
-    detail::readNamed(is, "precision_target", c.precision_target);
-    detail::readNamed(is, "max_spheres", c.max_spheres);
-    detail::readNamed(is, "persistence", c.persistence);
-    detail::readNamed(is, "compute_physics", c.compute_physics);
-    detail::readNamed(is, "is_2d", c.is_2d);
-    detail::readNamed(is, "density", c.density);
-    detail::readNamed(is, "prune_isolated_spheres", c.prune_isolated_spheres);
-    detail::readNamed(is, "show_progress", c.show_progress);
-    detail::readNamed(is, "conserve_mass", c.conserve_mass);
-    detail::readNamed(is, "parent_representation_offset", c.parent_representation_offset);
-    detail::readNamed(is, "fracture_plane_offset", c.fracture_plane_offset);
-    detail::readNamed(is, "separate_isolated_fragments", c.separate_isolated_fragments);
-    if (!(is >> word) || word != "end") is.setstate(std::ios::failbit);
+    std::string key, token;
+    while (is >> key && key != "end")
+    {
+        if (!(is >> token)) break;
+        std::istringstream value(token);
+        if (key == "div") value >> c.div;
+        else if (key == "volumetric_div") value >> c.volumetric_div;
+        else if (key == "padding") value >> c.padding;
+        else if (key == "minimum_radius_real") value >> c.minimum_radius_real;
+        else if (key == "confine_mesh") value >> c.confine_mesh;
+        else if (key == "min_center_distance_rel") value >> c.min_center_distance_rel;
+        else if (key == "search_window") value >> c.search_window;
+        else if (key == "radius_offset_vox") value >> c.radius_offset_vox;
+        else if (key == "min_radius_vox") value >> c.min_radius_vox;
+        else if (key == "medial_flux_threshold") value >> c.medial_flux_threshold;
+        else if (key == "precision_target") value >> c.precision_target;
+        else if (key == "max_spheres") value >> c.max_spheres;
+        else if (key == "persistence") value >> c.persistence;
+        else if (key == "compute_physics") value >> c.compute_physics;
+        else if (key == "is_2d") value >> c.is_2d;
+        else if (key == "density") value >> c.density;
+        else if (key == "prune_isolated_spheres") value >> c.prune_isolated_spheres;
+        else if (key == "show_progress") value >> c.show_progress;
+        else if (key == "conserve_mass") value >> c.conserve_mass;
+        else if (key == "parent_representation_offset") value >> c.parent_representation_offset;
+        else if (key == "fracture_plane_offset") value >> c.fracture_plane_offset;
+        else if (key == "separate_isolated_fragments") value >> c.separate_isolated_fragments;
+    }
+    if (key != "end") is.setstate(std::ios::failbit);
     return is;
 }
 
