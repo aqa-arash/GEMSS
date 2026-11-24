@@ -126,6 +126,14 @@ inline void export_voxel_grid_to_vtk(const VoxelGrid<T>& grid, const std::string
  */
 inline Eigen::MatrixX4f filter_largest_sphere_network(const Eigen::MatrixX4f& sphere_table);
 
+/**
+ * @brief Separates a SpherePack into its connected networks of spheres.
+ * @param sp Input SpherePack (physical units).
+ * @param grid Voxel grid covering the pack; sets the voxel size for the connectivity and the physics of each network.
+ * @return The input pack if all spheres form one network, otherwise one SpherePack per network (largest first).
+ */
+inline std::vector<SpherePack> separate_sphere_networks(const SpherePack& sp, const VoxelGrid<uint8_t>& grid);
+
 
 /**
  * @brief Compute physical properties of the multisphere union based on the input voxel grid.

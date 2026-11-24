@@ -21,6 +21,7 @@
 #include "GEMSS_datatypes.hpp"
 #include "GEMSS_voxel_processing.hpp"
 #include "GEMSS_config.hpp"
+#include "GEMSS_reconstruction.hpp"
 
 namespace GEMSS {
 
@@ -124,7 +125,7 @@ inline std::vector<SpherePack> multisphere_from_splitted_voxelGrid(
     }
     if (max_label == 0) return {};
 
-    std::vector<SpherePack> result(max_label);
+    std::vector<std::vector<SpherePack>> result(max_label);
     
     #pragma omp parallel for
     for (int label = 1; label <= max_label; ++label) {
@@ -151,10 +152,15 @@ inline std::vector<SpherePack> multisphere_from_splitted_voxelGrid(
         }
         
         // 3. Reconstruct (This will naturally fill the volume of the discarded boundary spheres)
-        result[label - 1] = multisphere_from_voxels(region_grid, region_config);
+        SpherePack sp = multisphere_from_voxels(region_grid, region_config);
+
+        // 4. Spheres that do not touch form separate fragments
+        result[label - 1] = separate_sphere_networks(sp, region_grid);
     }
-    
-    return result;
+
+    std::vector<SpherePack> fragments;
+    for (auto& pieces : result) for (auto& piece : pieces) fragments.push_back(std::move(piece));
+    return fragments;
 }
 
 /**

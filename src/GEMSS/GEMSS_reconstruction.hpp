@@ -185,6 +185,35 @@ inline SpherePack multisphere_from_voxels(
 }
 
 /**
+ * @brief Separates a SpherePack into its connected networks of spheres.
+ * @param sp Input SpherePack (physical units).
+ * @param grid Voxel grid covering the pack; sets the voxel size for the connectivity and the physics of each network.
+ * @return The input pack if all spheres form one network, otherwise one SpherePack per network (largest first),
+ *         each with its own mass, centre of mass and inertia.
+ */
+inline std::vector<SpherePack> separate_sphere_networks(const SpherePack& sp, const VoxelGrid<uint8_t>& grid) {
+    Eigen::MatrixX4f table(sp.centers.rows(), 4);
+    table.leftCols(3) = (sp.centers.rowwise() - grid.origin.transpose()).array() / grid.voxel_size - 0.5f;
+    table.col(3) = sp.radii.array() / grid.voxel_size;
+    std::vector<Eigen::MatrixX4f> networks = split_sphere_networks(table);
+    if (networks.size() <= 1) return {sp};
+
+    std::vector<SpherePack> pieces;
+    for (const auto& net : networks) {
+        Eigen::MatrixX3f centers = (net.leftCols(3).array() + 0.5f) * grid.voxel_size;
+        centers.rowwise() += grid.origin.transpose();
+        SpherePack piece(centers, net.col(3) * grid.voxel_size);
+        piece.is_2d = sp.is_2d;
+        piece.density = sp.density;
+        VoxelGrid<uint8_t> mask(grid.nx(), grid.ny(), grid.nz(), grid.voxel_size, grid.origin);
+        spheres_to_grid(mask, net, static_cast<uint8_t>(1));
+        compute_multisphere_physics(piece, mask);
+        pieces.push_back(piece);
+    }
+    return pieces;
+}
+
+/**
  * @brief Construct a multisphere representation directly from a triangle mesh.
  * Logically equivalent to the Python version, optimized for C++.
  * @param mesh Input STLMesh.

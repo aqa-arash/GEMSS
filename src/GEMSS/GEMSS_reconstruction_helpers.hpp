@@ -14,6 +14,7 @@
 
 #include <iostream>
 #include <vector>
+#include <map>
 #include <cmath>
 #include <algorithm>
 #include <Eigen/Core>
@@ -361,14 +362,14 @@ inline Eigen::MatrixX4f filter_and_shift_peaks(
 
 
 /**
- * @brief Filters the sphere table to keep only the largest connected network.
+ * @brief Splits the sphere table into its connected networks (spheres closer than a voxel diagonal are connected).
  * Uses an OpenMP-parallelized Dense Grid Spatial Hash with dynamic search extents.
- * @param sphere_table Input sphere table (Nx4 matrix).
- * @return Filtered sphere table containing only the primary connected component.
+ * @param sphere_table Input sphere table (Nx4 matrix, voxel units).
+ * @return One sphere table per network, largest (by r^3) first.
  */
-inline Eigen::MatrixX4f filter_largest_sphere_network(const Eigen::MatrixX4f& sphere_table) {
+inline std::vector<Eigen::MatrixX4f> split_sphere_networks(const Eigen::MatrixX4f& sphere_table) {
     int n = sphere_table.rows();
-    if (n <= 1) return sphere_table;
+    if (n <= 1) return {sphere_table};
 
     // Disjoint-Set (Union-Find)
     struct UnionFind {
@@ -510,34 +511,29 @@ inline Eigen::MatrixX4f filter_largest_sphere_network(const Eigen::MatrixX4f& sp
         uf.unite(edge.first, edge.second);
     }
 
-    // Find root with maximum accumulated volume proxy
-    int max_root = -1;
-    float max_vol = -1.0f;
-    for (int i = 0; i < n; ++i) {
-        int root = uf.find(i);
-        if (uf.volume[root] > max_vol) {
-            max_vol = uf.volume[root];
-            max_root = root;
-        }
-    }
+    // Group the spheres by network root, largest accumulated volume proxy first
+    std::map<int, std::vector<int>> members;
+    for (int i = 0; i < n; ++i) members[uf.find(i)].push_back(i);
+    std::vector<std::pair<int, std::vector<int>>> groups(members.begin(), members.end());
+    std::sort(groups.begin(), groups.end(),
+              [&](const auto& a, const auto& b) { return uf.volume[a.first] > uf.volume[b.first]; });
 
-    // Extract largest network
-    std::vector<Eigen::Vector4f> kept_spheres;
-    kept_spheres.reserve(n);
-    for (int i = 0; i < n; ++i) {
-        if (uf.find(i) == max_root) {
-            kept_spheres.push_back(sphere_table.row(i));
-        }
+    std::vector<Eigen::MatrixX4f> networks;
+    for (const auto& g : groups) {
+        Eigen::MatrixX4f table(g.second.size(), 4);
+        for (size_t k = 0; k < g.second.size(); ++k) table.row(k) = sphere_table.row(g.second[k]);
+        networks.push_back(table);
     }
+    return networks;
+}
 
-    Eigen::MatrixX4f result(kept_spheres.size(), 4);
-    
-    #pragma omp parallel for if(kept_spheres.size() > 1000)
-    for (int i = 0; i < static_cast<int>(kept_spheres.size()); ++i) {
-        result.row(i) = kept_spheres[i];
-    }
-
-    return result;
+/**
+ * @brief Filters the sphere table to keep only the largest connected network.
+ * @param sphere_table Input sphere table (Nx4 matrix).
+ * @return Filtered sphere table containing only the primary connected component.
+ */
+inline Eigen::MatrixX4f filter_largest_sphere_network(const Eigen::MatrixX4f& sphere_table) {
+    return split_sphere_networks(sphere_table).front();
 }
 
 
